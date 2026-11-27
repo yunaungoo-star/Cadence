@@ -1,0 +1,235 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Reusable Hardened Primitives ---
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function parentUserExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'email', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.uid is string && isValidId(data.uid) && data.uid == userId && data.uid == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 512))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTask(data, userId, taskId) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'title', 'description', 'status',
+          'priority', 'category', 'dueDate', 'updatedByDevice',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerId', 'title', 'description', 'status',
+          'priority', 'category', 'dueDate', 'archived', 'updatedByDevice',
+          'createdAt', 'updatedAt'
+        ])
+        && data.id is string && isValidId(data.id) && data.id == taskId
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == userId && data.ownerId == request.auth.uid
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 2000
+        && data.status is string && data.status in ['todo', 'in_progress', 'done']
+        && data.priority is string && data.priority in ['low', 'medium', 'high', 'urgent']
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 48
+        && data.dueDate is string && data.dueDate.size() <= 32 && data.dueDate.matches('^(\\d{4}-\\d{2}-\\d{2})?$')
+        && (!('archived' in data) || data.archived is bool)
+        && data.updatedByDevice is string && data.updatedByDevice.size() >= 1 && data.updatedByDevice.size() <= 80
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDeviceSession(data, userId, deviceId) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'deviceName', 'platform', 'browser',
+          'cpuCores', 'memoryGB', 'isOnline', 'createdAt', 'lastActiveAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerId', 'deviceName', 'platform', 'browser',
+          'cpuCores', 'memoryGB', 'isOnline', 'createdAt', 'lastActiveAt'
+        ])
+        && data.id is string && isValidId(data.id) && data.id == deviceId
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == userId && data.ownerId == request.auth.uid
+        && data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 80
+        && data.platform is string && data.platform.size() >= 1 && data.platform.size() <= 64
+        && data.browser is string && data.browser.size() >= 1 && data.browser.size() <= 64
+        && data.cpuCores is number && data.cpuCores >= 0 && data.cpuCores <= 1024
+        && data.memoryGB is number && data.memoryGB >= 0 && data.memoryGB <= 4096
+        && data.isOnline is bool
+        && data.createdAt is timestamp
+        && data.lastActiveAt is timestamp;
+    }
+
+    function isValidSecurityScan(data, userId, scanId) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'deviceId', 'deviceName', 'overallStatus',
+          'passedChecks', 'warningChecks', 'criticalChecks', 'totalChecks',
+          'summary', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerId', 'deviceId', 'deviceName', 'overallStatus',
+          'passedChecks', 'warningChecks', 'criticalChecks', 'totalChecks',
+          'summary', 'createdAt'
+        ])
+        && data.id is string && isValidId(data.id) && data.id == scanId
+        && data.ownerId is string && isValidId(data.ownerId) && data.ownerId == userId && data.ownerId == request.auth.uid
+        && data.deviceId is string && isValidId(data.deviceId)
+        && data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 80
+        && data.overallStatus is string && data.overallStatus in ['protected', 'attention', 'at_risk']
+        && data.passedChecks is number && data.passedChecks >= 0 && data.passedChecks <= 100
+        && data.warningChecks is number && data.warningChecks >= 0 && data.warningChecks <= 100
+        && data.criticalChecks is number && data.criticalChecks >= 0 && data.criticalChecks <= 100
+        && data.totalChecks is number && data.totalChecks >= 1 && data.totalChecks <= 100
+        && data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 300
+        && data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // User Profiles (PII isolated strictly to owner; no collection list)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isVerified()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'photoURL', 'updatedAt']);
+      allow delete: if false;
+
+      // Real-Time Synchronized Tasks
+      match /tasks/{taskId} {
+        allow get: if isValidId(userId) && isValidId(taskId) && isOwner(userId) && parentUserExists(userId);
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isVerified()
+          && isValidId(userId)
+          && isValidId(taskId)
+          && isOwner(userId)
+          && isValidTask(incoming(), userId, taskId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && parentUserExists(userId);
+        allow update: if isVerified()
+          && isValidId(userId)
+          && isValidId(taskId)
+          && isOwner(userId)
+          && isValidTask(incoming(), userId, taskId)
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (
+            // Action: Quick Status Toggle
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedByDevice', 'updatedAt']) ||
+            // Action: Archive / Unarchive Task
+            incoming().diff(existing()).affectedKeys().hasOnly(['archived', 'updatedByDevice', 'updatedAt']) ||
+            // Action: Edit Task Details
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'status', 'priority', 'category', 'dueDate', 'updatedByDevice', 'updatedAt'])
+          )
+          && parentUserExists(userId);
+        allow delete: if isVerified()
+          && isValidId(userId)
+          && isValidId(taskId)
+          && isOwner(userId)
+          && parentUserExists(userId);
+      }
+
+      // Connected Device Sessions
+      match /devices/{deviceId} {
+        allow get: if isValidId(userId) && isValidId(deviceId) && isOwner(userId) && parentUserExists(userId);
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isVerified()
+          && isValidId(userId)
+          && isValidId(deviceId)
+          && isOwner(userId)
+          && isValidDeviceSession(incoming(), userId, deviceId)
+          && incoming().createdAt == request.time
+          && incoming().lastActiveAt == request.time
+          && parentUserExists(userId);
+        allow update: if isVerified()
+          && isValidId(userId)
+          && isValidId(deviceId)
+          && isOwner(userId)
+          && isValidDeviceSession(incoming(), userId, deviceId)
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().lastActiveAt == request.time
+          && (
+            // Action: Heartbeat / Presence Update
+            incoming().diff(existing()).affectedKeys().hasOnly(['isOnline', 'lastActiveAt', 'cpuCores', 'memoryGB']) ||
+            // Action: Rename or Re-register Device Metadata
+            incoming().diff(existing()).affectedKeys().hasOnly(['deviceName', 'platform', 'browser', 'cpuCores', 'memoryGB', 'isOnline', 'lastActiveAt'])
+          )
+          && parentUserExists(userId);
+        allow delete: if isVerified()
+          && isValidId(userId)
+          && isValidId(deviceId)
+          && isOwner(userId)
+          && parentUserExists(userId);
+      }
+
+      // Device Security Scan Audit Reports (immutable once recorded)
+      match /securityScans/{scanId} {
+        allow get: if isValidId(userId) && isValidId(scanId) && isOwner(userId) && parentUserExists(userId);
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isVerified()
+          && isValidId(userId)
+          && isValidId(scanId)
+          && isOwner(userId)
+          && isValidSecurityScan(incoming(), userId, scanId)
+          && incoming().createdAt == request.time
+          && parentUserExists(userId);
+        allow update: if false;
+        allow delete: if isVerified()
+          && isValidId(userId)
+          && isValidId(scanId)
+          && isOwner(userId)
+          && parentUserExists(userId);
+      }
+    }
+  }
+}

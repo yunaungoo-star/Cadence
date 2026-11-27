@@ -1,0 +1,303 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private user account profile storing identity metadata for cross-device task synchronization.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the user."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "User display name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254,
+          "description": "Verified user email address (PII, owner-only)."
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Optional profile avatar URL."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was last updated."
+        }
+      },
+      "required": ["uid", "displayName", "email", "createdAt", "updatedAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A synchronized user task item replicated across all signed-in devices in real time.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique task document identifier."
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the user who owns this task."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Concise task title."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Optional task notes or acceptance criteria."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["todo", "in_progress", "done"],
+          "description": "Current workflow state of the task."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "urgent"],
+          "description": "Task urgency level."
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48,
+          "description": "Task workspace category or project label."
+        },
+        "dueDate": {
+          "type": "string",
+          "maxLength": 32,
+          "pattern": "^(\\d{4}-\\d{2}-\\d{2})?$",
+          "description": "Optional ISO date string (YYYY-MM-DD) or empty string."
+        },
+        "archived": {
+          "type": "boolean",
+          "description": "Whether the task is archived from the active task view."
+        },
+        "updatedByDevice": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Name of the device that last modified this task."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of task creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last task update."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "title",
+        "description",
+        "status",
+        "priority",
+        "category",
+        "dueDate",
+        "updatedByDevice",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DeviceSession": {
+      "title": "DeviceSession",
+      "description": "Registered browser/device session connected for real-time task sync.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique device session identifier."
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the authenticated owner."
+        },
+        "deviceName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Human-readable device label."
+        },
+        "platform": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Operating system or platform reported by client."
+        },
+        "browser": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Browser engine name."
+        },
+        "cpuCores": {
+          "type": "number",
+          "description": "Logical CPU cores reported by navigator.hardwareConcurrency."
+        },
+        "memoryGB": {
+          "type": "number",
+          "description": "Approximate device RAM in GB if exposed by browser, else 0."
+        },
+        "isOnline": {
+          "type": "boolean",
+          "description": "Whether the device session is currently online."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when device session was first registered."
+        },
+        "lastActiveAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the latest sync heartbeat."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "deviceName",
+        "platform",
+        "browser",
+        "cpuCores",
+        "memoryGB",
+        "isOnline",
+        "createdAt",
+        "lastActiveAt"
+      ]
+    },
+    "SecurityScan": {
+      "title": "SecurityScan",
+      "description": "Device security posture and smart protection scan report synchronized across user devices.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique security scan identifier."
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the authenticated owner."
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Identifier of the device where the scan ran."
+        },
+        "deviceName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Name of the scanned device."
+        },
+        "overallStatus": {
+          "type": "string",
+          "enum": ["protected", "attention", "at_risk"],
+          "description": "Overall security posture classification."
+        },
+        "passedChecks": {
+          "type": "number",
+          "description": "Number of checks that passed."
+        },
+        "warningChecks": {
+          "type": "number",
+          "description": "Number of checks with warnings."
+        },
+        "criticalChecks": {
+          "type": "number",
+          "description": "Number of critical findings."
+        },
+        "totalChecks": {
+          "type": "number",
+          "description": "Total number of security checks evaluated."
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "description": "Concise summary of scan findings."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the scan was recorded."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "deviceId",
+        "deviceName",
+        "overallStatus",
+        "passedChecks",
+        "warningChecks",
+        "criticalChecks",
+        "totalChecks",
+        "summary",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Owner-isolated user profile documents containing PII."
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "User-owned tasks synced in real time across devices."
+    },
+    "/users/{userId}/devices/{deviceId}": {
+      "schema": { "$ref": "#/entities/DeviceSession" },
+      "description": "Active and recent device sessions linked to the user account."
+    },
+    "/users/{userId}/securityScans/{scanId}": {
+      "schema": { "$ref": "#/entities/SecurityScan" },
+      "description": "Device security scan reports synchronized across user devices."
+    }
+  }
+}

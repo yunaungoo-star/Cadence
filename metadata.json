@@ -1,0 +1,6 @@
+{
+  "name": "Cadence",
+  "description": "Real-time cross-device task management workspace with live CPU and memory system status monitoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

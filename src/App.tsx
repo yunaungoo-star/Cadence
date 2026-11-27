@@ -220,23 +220,29 @@ function CadenceWorkspace() {
                     key={item.id}
                     type="button"
                     onClick={() => selectTab(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 min-h-[40px] text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                    className={`group w-full flex items-center justify-between px-3 py-2.5 min-h-[40px] text-sm font-medium rounded-lg border transition-colors whitespace-nowrap ${
                       active
-                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-900/60'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-800 hover:bg-blue-50/70 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-300 hover:border-blue-200 dark:hover:border-blue-800/70'
+                        : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-blue-700 dark:hover:text-blue-300 hover:border-blue-100 dark:hover:border-blue-900/60'
                     }`}
                   >
                     <span className="flex items-center gap-2.5">
-                      <Icon className="w-4 h-4 shrink-0" />
+                      <Icon
+                        className={`w-4 h-4 shrink-0 transition-colors ${
+                          active
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400'
+                        }`}
+                      />
                       <span>{item.label}</span>
                     </span>
                     {item.id === 'tasks' && workspace.user && (
-                      <span className="text-xs font-mono tabular-nums text-slate-400 dark:text-slate-500">
+                      <span className="text-xs font-mono tabular-nums text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {workspace.tasks.filter((t) => !t.archived && t.status !== 'done').length}
                       </span>
                     )}
                     {item.id === 'devices' && workspace.user && (
-                      <span className="text-xs font-mono tabular-nums text-slate-400 dark:text-slate-500">
+                      <span className="text-xs font-mono tabular-nums text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {workspace.devices.length}
                       </span>
                     )}

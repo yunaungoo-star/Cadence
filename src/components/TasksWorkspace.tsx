@@ -24,10 +24,13 @@ import {
   Search,
   ShieldCheck,
   Trash2,
+  Wrench,
   X,
 } from 'lucide-react';
 import { HardwareToolsPanel } from '@/src/components/HardwareToolsPanel';
 import { TasksGuidePanel, type TasksGuideTab } from '@/src/components/TasksGuidePanel';
+import { WorkspaceToolsPanel } from '@/src/components/WorkspaceToolsPanel';
+import { useFocusTimer } from '@/src/hooks/useFocusTimer';
 import type { TelemetryThresholds } from '@/src/hooks/useSystemTelemetry';
 import { formatRelativeTime } from '@/src/lib/formatters';
 import { useLanguage, type TranslationSet } from '@/src/lib/i18n';
@@ -258,8 +261,10 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
   const [showGuide, setShowGuide] = useState(false);
   const [guideTab, setGuideTab] = useState<TasksGuideTab>('creating');
   const [showHardwareTools, setShowHardwareTools] = useState(false);
+  const [showWorkspaceTools, setShowWorkspaceTools] = useState(false);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
+  const focusTimer = useFocusTimer();
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const quickTitleInputRef = useRef<HTMLInputElement | null>(null);
@@ -269,6 +274,8 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
 
   const openGuideAt = (tab: TasksGuideTab) => {
     setGuideTab(tab);
+    setShowHardwareTools(false);
+    setShowWorkspaceTools(false);
     setShowGuide(true);
   };
 
@@ -633,13 +640,55 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
             </>
           )}
 
+          <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+          <button
+            type="button"
+            aria-expanded={showWorkspaceTools}
+            onClick={() => {
+              setShowWorkspaceTools((prev) => {
+                const next = !prev;
+                if (next) {
+                  setShowHardwareTools(false);
+                  setShowGuide(false);
+                }
+                return next;
+              });
+            }}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-colors whitespace-nowrap shrink-0 ${
+              showWorkspaceTools
+                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Wrench
+              className={`w-3.5 h-3.5 ${
+                focusTimer.isRunning ? 'text-blue-600 dark:text-blue-400' : ''
+              }`}
+            />
+            <span>{t.tasks.workspaceTools}</span>
+            {focusTimer.isMidSession && (
+              <span className="font-mono tabular-nums text-[11px] text-blue-600 dark:text-blue-400">
+                · {focusTimer.formattedTime}
+              </span>
+            )}
+          </button>
+
           {clientDevice && onToggleTelemetryPause && onUpdateTelemetryThresholds && (
             <>
               <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
               <button
                 type="button"
                 aria-expanded={showHardwareTools}
-                onClick={() => setShowHardwareTools((prev) => !prev)}
+                onClick={() => {
+                  setShowHardwareTools((prev) => {
+                    const next = !prev;
+                    if (next) {
+                      setShowWorkspaceTools(false);
+                      setShowGuide(false);
+                    }
+                    return next;
+                  });
+                }}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-colors whitespace-nowrap shrink-0 ${
                   showHardwareTools
                     ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
@@ -669,7 +718,16 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
           <button
             type="button"
             aria-expanded={showGuide}
-            onClick={() => setShowGuide((prev) => !prev)}
+            onClick={() => {
+              setShowGuide((prev) => {
+                const next = !prev;
+                if (next) {
+                  setShowWorkspaceTools(false);
+                  setShowHardwareTools(false);
+                }
+                return next;
+              });
+            }}
             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-colors whitespace-nowrap shrink-0 ${
               showGuide
                 ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
@@ -713,6 +771,21 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Workspace Productivity Tools Panel */}
+      {showWorkspaceTools && (
+        <WorkspaceToolsPanel
+          tasks={tasks}
+          filteredTasks={filteredTasks}
+          categories={categories}
+          focusTimer={focusTimer}
+          onCreateTask={onCreateTask}
+          onUpdateStatus={onUpdateStatus}
+          onToggleArchive={onToggleArchive}
+          onDeleteTask={onDeleteTask}
+          onClose={() => setShowWorkspaceTools(false)}
+        />
+      )}
 
       {/* System Hardware Tools Panel */}
       {showHardwareTools && clientDevice && onToggleTelemetryPause && onUpdateTelemetryThresholds && (

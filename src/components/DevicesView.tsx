@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Check, Laptop, Monitor, Smartphone, Trash2 } from 'lucide-react';
 import { formatBytes, formatRelativeTime } from '@/src/lib/formatters';
+import { useLanguage } from '@/src/lib/i18n';
 import { BLUEPRINT_LIMITS } from '@/src/lib/validation';
 import type { ClientDeviceInfo, DeviceSession } from '@/src/types/app';
 
@@ -29,6 +30,7 @@ export const DevicesView: React.FC<DevicesViewProps> = ({
   onRenameDevice,
   onRemoveDevice,
 }) => {
+  const { t } = useLanguage();
   const [nameInput, setNameInput] = useState(clientDevice.deviceName);
   const [savedNotice, setSavedNotice] = useState(false);
 
@@ -43,10 +45,10 @@ export const DevicesView: React.FC<DevicesViewProps> = ({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 font-display tracking-tight">
-          Connected Devices
+          {t.devices.title}
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Inspect local browser hardware capabilities and manage devices syncing tasks in real time.
+          {t.devices.subtitle}
         </p>
       </div>
 
@@ -55,11 +57,11 @@ export const DevicesView: React.FC<DevicesViewProps> = ({
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-              This Browser Session
+              {t.devices.thisBrowserSession}
             </h2>
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
               <span className={clientDevice.online ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-red-600 dark:text-red-400 font-medium'}>
-                {clientDevice.online ? 'Online' : 'Offline'}
+                {clientDevice.online ? t.devices.online : t.devices.offline}
               </span>
               <span aria-hidden="true">·</span>
               <span>{clientDevice.browser} on {clientDevice.platform}</span>
@@ -94,7 +96,7 @@ export const DevicesView: React.FC<DevicesViewProps> = ({
               className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[40px] text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors whitespace-nowrap shrink-0"
             >
               {savedNotice && <Check className="w-3.5 h-3.5" />}
-              {savedNotice ? 'Saved' : 'Rename Device'}
+              {savedNotice ? t.devices.saved : t.devices.renameDevice}
             </button>
           </form>
         </div>
@@ -104,11 +106,11 @@ export const DevicesView: React.FC<DevicesViewProps> = ({
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-            Account Sync Sessions
+            {t.devices.accountSyncSessions}
           </h2>
           {userSignedIn && (
             <span className="text-xs font-mono tabular-nums text-slate-500 dark:text-slate-400">
-              {devices.length} registered
+              {devices.length} {t.devices.registeredSuffix}
             </span>
           )}
         </div>
@@ -116,22 +118,22 @@ export const DevicesView: React.FC<DevicesViewProps> = ({
         {!userSignedIn ? (
           <div className="px-6 py-12 text-center">
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              Sign in to view connected devices across your account
+              {t.devices.signInPrompt}
             </p>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Every browser or device signed into your Google account appears here in real time.
+              {t.devices.signInDesc}
             </p>
             <button
               type="button"
               onClick={() => void onSignIn()}
               className="mt-5 px-4 py-2 min-h-[40px] text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors whitespace-nowrap"
             >
-              Sign in with Google
+              {t.nav.signInGoogle}
             </button>
           </div>
         ) : devices.length === 0 ? (
           <div className="px-6 py-10 text-center text-xs text-slate-500 dark:text-slate-400">
-            Registering current device session...
+            {t.devices.registering}
           </div>
         ) : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -147,13 +149,13 @@ export const DevicesView: React.FC<DevicesViewProps> = ({
                         {device.deviceName}
                         {isCurrent && (
                           <span className="ml-2 text-xs font-normal text-blue-600 dark:text-blue-400">
-                            (This device)
+                            {t.devices.thisDeviceTag}
                           </span>
                         )}
                       </div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                         <span className={device.isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}>
-                          {device.isOnline ? 'Online' : 'Offline'}
+                          {device.isOnline ? t.devices.online : t.devices.offline}
                         </span>
                         <span aria-hidden="true">·</span>
                         <span>{device.browser} on {device.platform}</span>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import { formatTimeClock } from '@/src/lib/formatters';
 
 export interface ChartPoint {
@@ -59,6 +59,8 @@ export const LiveMetricChart: React.FC<LiveMetricChartProps> = ({
   headerActions,
 }) => {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const rawGradId = useId();
+  const areaGradId = `chart-grad-${rawGradId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   const width = 560;
   const height = 180;
@@ -140,8 +142,20 @@ export const LiveMetricChart: React.FC<LiveMetricChartProps> = ({
 
   const unitSuffix = unit ? (unit.startsWith('%') ? unit : ` ${unit}`) : '';
 
+  const lastCoord = coords.length > 0 ? coords[coords.length - 1] : null;
+  const hoverBoxW = 108;
+  const hoverBoxH = 22;
+  const hoverBoxX = hovered
+    ? Math.min(Math.max(hovered.x - hoverBoxW / 2, padLeft), width - padRight - hoverBoxW)
+    : 0;
+  const hoverBoxY = hovered
+    ? hovered.y - hoverBoxH - 10 >= padTop
+      ? hovered.y - hoverBoxH - 10
+      : Math.min(hovered.y + 10, padTop + plotH - hoverBoxH)
+    : 0;
+
   return (
-    <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+    <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl p-5 flex flex-col justify-between transition-colors">
       <div>
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="min-w-0">
@@ -224,8 +238,15 @@ export const LiveMetricChart: React.FC<LiveMetricChartProps> = ({
               </g>
             )}
 
+            <defs>
+              <linearGradient id={areaGradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={accentColor} stopOpacity={0.24} />
+                <stop offset="100%" stopColor={accentColor} stopOpacity={0.01} />
+              </linearGradient>
+            </defs>
+
             {/* Area & Line */}
-            {areaPath && <path d={areaPath} fill={accentColor} fillOpacity={0.12} />}
+            {areaPath && <path d={areaPath} fill={`url(#${areaGradId})`} />}
             {linePath && (
               <path
                 d={linePath}
@@ -237,7 +258,19 @@ export const LiveMetricChart: React.FC<LiveMetricChartProps> = ({
               />
             )}
 
-            {/* Hover crosshair */}
+            {/* Live trailing endpoint dot */}
+            {!hovered && lastCoord && (
+              <circle
+                cx={lastCoord.x}
+                cy={lastCoord.y}
+                r={3.5}
+                fill={accentColor}
+                className="stroke-white dark:stroke-slate-900"
+                strokeWidth={2}
+              />
+            )}
+
+            {/* Hover crosshair & floating readout */}
             {hovered && (
               <g>
                 <line
@@ -257,6 +290,24 @@ export const LiveMetricChart: React.FC<LiveMetricChartProps> = ({
                   className="stroke-white dark:stroke-slate-900"
                   strokeWidth={2}
                 />
+                <g transform={`translate(${hoverBoxX.toFixed(1)}, ${hoverBoxY.toFixed(1)})`}>
+                  <rect
+                    width={hoverBoxW}
+                    height={hoverBoxH}
+                    rx={6}
+                    className="fill-slate-900 dark:fill-slate-100 stroke-slate-700/60 dark:stroke-slate-300"
+                    strokeWidth={0.75}
+                  />
+                  <text
+                    x={hoverBoxW / 2}
+                    y={14.5}
+                    textAnchor="middle"
+                    className="fill-white dark:fill-slate-900 text-[10px] font-mono font-medium tabular-nums"
+                  >
+                    {hovered.point.value.toFixed(valueDecimals)}
+                    {unitSuffix} · {formatTimeClock(hovered.point.timestamp)}
+                  </text>
+                </g>
               </g>
             )}
 

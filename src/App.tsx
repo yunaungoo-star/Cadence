@@ -8,6 +8,7 @@ import {
   Activity,
   CheckSquare,
   Cpu,
+  Gauge,
   Laptop,
   LogOut,
   Menu,
@@ -21,12 +22,14 @@ import { ActivityView } from '@/src/components/ActivityView';
 import { CompactSystemWidget } from '@/src/components/CompactSystemWidget';
 import { DevicesView } from '@/src/components/DevicesView';
 import { ErrorBoundary } from '@/src/components/ErrorBoundary';
+import { LiveDashboardView } from '@/src/components/LiveDashboardView';
 import { SecurityScanView } from '@/src/components/SecurityScanView';
 import { SystemTelemetryView } from '@/src/components/SystemTelemetryView';
 import { TaskEditorModal } from '@/src/components/TaskEditorModal';
 import { TasksWorkspace } from '@/src/components/TasksWorkspace';
 import { useRealtimeWorkspace } from '@/src/hooks/useRealtimeWorkspace';
 import { useSystemTelemetry } from '@/src/hooks/useSystemTelemetry';
+import { LanguageProvider, useLanguage } from '@/src/lib/i18n';
 import type { ActiveTab, TaskDraft, TaskItem } from '@/src/types/app';
 
 const THEME_STORAGE_KEY = 'cadence_theme';
@@ -42,6 +45,7 @@ function loadInitialTheme(): 'light' | 'dark' {
 }
 
 function CadenceWorkspace() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<ActiveTab>('tasks');
   const [theme, setTheme] = useState<'light' | 'dark'>(loadInitialTheme);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -60,6 +64,26 @@ function CadenceWorkspace() {
       // ignore storage errors
     }
   }, [theme]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+        return;
+      }
+      if (e.key !== 'n' || e.metaKey || e.ctrlKey || e.altKey || editorOpen || !workspace.user) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable) {
+        return;
+      }
+      e.preventDefault();
+      setEditingTask(null);
+      setEditorOpen(true);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mobileMenuOpen, editorOpen, workspace.user]);
 
   const categories = useMemo(() => {
     const base = new Set(['General', 'Engineering', 'Operations', 'Personal']);
@@ -83,11 +107,12 @@ function CadenceWorkspace() {
   };
 
   const navItems: Array<{ id: ActiveTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-    { id: 'system', label: 'System Monitor', icon: Cpu },
-    { id: 'devices', label: 'Devices', icon: Laptop },
-    { id: 'security', label: 'Security', icon: ShieldCheck },
-    { id: 'activity', label: 'Sync Log', icon: Activity },
+    { id: 'tasks', label: t.nav.tasks, icon: CheckSquare },
+    { id: 'dashboard', label: t.nav.dashboard, icon: Gauge },
+    { id: 'system', label: t.nav.system, icon: Cpu },
+    { id: 'devices', label: t.nav.devices, icon: Laptop },
+    { id: 'security', label: t.nav.security, icon: ShieldCheck },
+    { id: 'activity', label: t.nav.activity, icon: Activity },
   ];
 
   const selectTab = (tab: ActiveTab) => {
@@ -98,7 +123,7 @@ function CadenceWorkspace() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       {/* Top Bar: Strict 3-Zone Contract */}
-      <header className="h-16 px-4 sm:px-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-8">
+      <header className="sticky top-0 z-30 h-16 px-4 sm:px-6 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-8 transition-colors">
         {/* Zone 1: Single-element wordmark */}
         <div className="flex items-center gap-3 shrink-0">
           <button
@@ -121,8 +146,8 @@ function CadenceWorkspace() {
           </a>
         </div>
 
-        {/* Zone 2: 4 concise single-line text nav links */}
-        <nav className="hidden md:flex items-center gap-6" aria-label="Primary navigation">
+        {/* Zone 2: Concise single-line text nav links */}
+        <nav className="hidden lg:flex items-center gap-5 xl:gap-6" aria-label="Primary navigation">
           {navItems.map((item) => {
             const active = activeTab === item.id;
             return (
@@ -151,30 +176,39 @@ function CadenceWorkspace() {
                 setActiveTab('tasks');
                 handleOpenEditor(null);
               }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[40px] text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[40px] text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.985] rounded-lg transition-all whitespace-nowrap shrink-0"
             >
               <Plus className="w-4 h-4" />
-              New Task
+              {t.nav.newTask}
             </button>
           ) : (
             <button
               type="button"
               onClick={() => void workspace.signInWithGoogle()}
-              className="px-4 py-2 min-h-[40px] text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors whitespace-nowrap shrink-0"
+              className="px-4 py-2 min-h-[40px] text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.985] rounded-lg transition-all whitespace-nowrap shrink-0"
             >
-              Sign in with Google
+              {t.nav.signInGoogle}
             </button>
           )}
         </div>
       </header>
+
+      {/* Mobile Drawer Backdrop */}
+      {mobileMenuOpen && (
+        <div
+          aria-hidden="true"
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 top-16 z-30 bg-slate-950/30 backdrop-blur-[1px] lg:hidden"
+        />
+      )}
 
       {/* Main Workspace Shell */}
       <div className="flex-1 flex max-w-[1440px] w-full mx-auto">
         {/* Desktop Sidebar & Mobile Drawer */}
         <aside
           className={`${
-            mobileMenuOpen ? 'fixed inset-y-16 left-0 z-40 flex' : 'hidden'
-          } lg:static lg:flex flex-col justify-between w-64 shrink-0 bg-slate-50 dark:bg-slate-950 lg:bg-transparent border-r border-slate-200 dark:border-slate-800 p-4 sm:p-5 gap-6`}
+            mobileMenuOpen ? 'fixed inset-y-16 left-0 z-40 flex shadow-lg' : 'hidden'
+          } lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:flex flex-col justify-between w-64 shrink-0 bg-slate-50 dark:bg-slate-950 lg:bg-transparent border-r border-slate-200 dark:border-slate-800 p-4 sm:p-5 gap-6`}
         >
           <div className="space-y-6">
             <nav className="space-y-1" aria-label="Workspace sections">
@@ -220,7 +254,7 @@ function CadenceWorkspace() {
           </div>
 
           {/* Bottom Sidebar Controls: Theme & Account */}
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
             <button
               type="button"
               onClick={() => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))}
@@ -228,7 +262,7 @@ function CadenceWorkspace() {
             >
               <span className="flex items-center gap-2">
                 {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                <span>{theme === 'light' ? 'Dark appearance' : 'Light appearance'}</span>
+                <span>{theme === 'light' ? t.nav.darkAppearance : t.nav.lightAppearance}</span>
               </span>
             </button>
 
@@ -262,7 +296,7 @@ function CadenceWorkspace() {
                   className="mt-2.5 w-full flex items-center gap-2 px-3 py-2 min-h-[36px] text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg transition-colors"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>Sign Out</span>
+                  <span>{t.nav.signOut}</span>
                 </button>
               </div>
             )}
@@ -280,91 +314,116 @@ function CadenceWorkspace() {
             </div>
           )}
 
-          {activeTab === 'tasks' && (
-            <TasksWorkspace
-              userSignedIn={Boolean(workspace.user)}
-              authReady={workspace.authReady}
-              tasks={workspace.tasks}
-              loadingTasks={workspace.loadingTasks}
-              syncState={workspace.syncState}
-              lastSyncedAt={workspace.lastSyncedAt}
-              categories={categories}
-              onlineDeviceCount={workspace.devices.filter((d) => d.isOnline).length}
-              totalDeviceCount={workspace.devices.length}
-              latestScanStatus={workspace.securityScans[0]?.overallStatus ?? null}
-              snapshot={telemetry.snapshot}
-              telemetryStreamStatus={telemetry.streamStatus}
-              telemetryPaused={telemetry.isPaused}
-              telemetryThresholds={telemetry.thresholds}
-              clientDevice={telemetry.clientDevice}
-              onSignIn={workspace.signInWithGoogle}
-              onCreateTask={workspace.createTask}
-              onUpdateStatus={workspace.updateTaskStatus}
-              onToggleArchive={workspace.toggleTaskArchive}
-              onDeleteTask={workspace.deleteTask}
-              onOpenEditor={handleOpenEditor}
-              onOpenDevices={() => selectTab('devices')}
-              onOpenSecurity={() => selectTab('security')}
-              onToggleTelemetryPause={telemetry.togglePause}
-              onUpdateTelemetryThresholds={telemetry.updateThresholds}
-              onOpenSystemMonitor={() => selectTab('system')}
-            />
-          )}
+          <div key={activeTab} className="cadence-view-enter">
+            {activeTab === 'tasks' && (
+              <TasksWorkspace
+                userSignedIn={Boolean(workspace.user)}
+                authReady={workspace.authReady}
+                tasks={workspace.tasks}
+                loadingTasks={workspace.loadingTasks}
+                syncState={workspace.syncState}
+                lastSyncedAt={workspace.lastSyncedAt}
+                categories={categories}
+                onlineDeviceCount={workspace.devices.filter((d) => d.isOnline).length}
+                totalDeviceCount={workspace.devices.length}
+                latestScanStatus={workspace.securityScans[0]?.overallStatus ?? null}
+                snapshot={telemetry.snapshot}
+                telemetryStreamStatus={telemetry.streamStatus}
+                telemetryPaused={telemetry.isPaused}
+                telemetryThresholds={telemetry.thresholds}
+                clientDevice={telemetry.clientDevice}
+                onSignIn={workspace.signInWithGoogle}
+                onCreateTask={workspace.createTask}
+                onUpdateStatus={workspace.updateTaskStatus}
+                onToggleArchive={workspace.toggleTaskArchive}
+                onDeleteTask={workspace.deleteTask}
+                onOpenEditor={handleOpenEditor}
+                onOpenDevices={() => selectTab('devices')}
+                onOpenSecurity={() => selectTab('security')}
+                onToggleTelemetryPause={telemetry.togglePause}
+                onUpdateTelemetryThresholds={telemetry.updateThresholds}
+                onOpenSystemMonitor={() => selectTab('system')}
+              />
+            )}
 
-          {activeTab === 'system' && (
-            <SystemTelemetryView
-              snapshot={telemetry.snapshot}
-              history={telemetry.history}
-              streamStatus={telemetry.streamStatus}
-              isPaused={telemetry.isPaused}
-              onTogglePause={telemetry.togglePause}
-              thresholds={telemetry.thresholds}
-              onUpdateThresholds={telemetry.updateThresholds}
-              thresholdEvents={telemetry.thresholdEvents}
-              onClearThresholdEvents={telemetry.clearThresholdEvents}
-              clientDevice={telemetry.clientDevice}
-            />
-          )}
+            {activeTab === 'dashboard' && (
+              <LiveDashboardView
+                snapshot={telemetry.snapshot}
+                history={telemetry.history}
+                streamStatus={telemetry.streamStatus}
+                isPaused={telemetry.isPaused}
+                onTogglePause={telemetry.togglePause}
+                onRefreshNow={telemetry.refreshNow}
+                thresholds={telemetry.thresholds}
+                onUpdateThresholds={telemetry.updateThresholds}
+                thresholdEvents={telemetry.thresholdEvents}
+                onClearThresholdEvents={telemetry.clearThresholdEvents}
+                clientDevice={telemetry.clientDevice}
+                devices={workspace.devices}
+                tasks={workspace.tasks}
+                securityScans={workspace.securityScans}
+                syncState={workspace.syncState}
+                userSignedIn={Boolean(workspace.user)}
+                onOpenTab={selectTab}
+                onCreateRemediationTask={workspace.createTask}
+              />
+            )}
 
-          {activeTab === 'devices' && (
-            <DevicesView
-              userSignedIn={Boolean(workspace.user)}
-              devices={workspace.devices}
-              currentDeviceId={workspace.currentDeviceId}
-              clientDevice={telemetry.clientDevice}
-              onSignIn={workspace.signInWithGoogle}
-              onRenameDevice={workspace.renameCurrentDevice}
-              onRemoveDevice={workspace.removeDeviceSession}
-            />
-          )}
+            {activeTab === 'system' && (
+              <SystemTelemetryView
+                snapshot={telemetry.snapshot}
+                history={telemetry.history}
+                streamStatus={telemetry.streamStatus}
+                isPaused={telemetry.isPaused}
+                onTogglePause={telemetry.togglePause}
+                thresholds={telemetry.thresholds}
+                onUpdateThresholds={telemetry.updateThresholds}
+                thresholdEvents={telemetry.thresholdEvents}
+                onClearThresholdEvents={telemetry.clearThresholdEvents}
+                clientDevice={telemetry.clientDevice}
+              />
+            )}
 
-          {activeTab === 'security' && (
-            <SecurityScanView
-              userSignedIn={Boolean(workspace.user)}
-              emailVerified={Boolean(workspace.user?.emailVerified)}
-              clientDevice={telemetry.clientDevice}
-              devices={workspace.devices}
-              currentDeviceId={workspace.currentDeviceId}
-              snapshot={telemetry.snapshot}
-              thresholds={telemetry.thresholds}
-              securityScans={workspace.securityScans}
-              onSignIn={workspace.signInWithGoogle}
-              onRecordScan={workspace.recordSecurityScan}
-              onDeleteScan={workspace.deleteSecurityScan}
-              onRemoveDevice={workspace.removeDeviceSession}
-              onOpenSystemMonitor={() => selectTab('system')}
-            />
-          )}
+            {activeTab === 'devices' && (
+              <DevicesView
+                userSignedIn={Boolean(workspace.user)}
+                devices={workspace.devices}
+                currentDeviceId={workspace.currentDeviceId}
+                clientDevice={telemetry.clientDevice}
+                onSignIn={workspace.signInWithGoogle}
+                onRenameDevice={workspace.renameCurrentDevice}
+                onRemoveDevice={workspace.removeDeviceSession}
+              />
+            )}
 
-          {activeTab === 'activity' && (
-            <ActivityView
-              userSignedIn={Boolean(workspace.user)}
-              tasks={workspace.tasks}
-              syncState={workspace.syncState}
-              lastSyncedAt={workspace.lastSyncedAt}
-              onSignIn={workspace.signInWithGoogle}
-            />
-          )}
+            {activeTab === 'security' && (
+              <SecurityScanView
+                userSignedIn={Boolean(workspace.user)}
+                emailVerified={Boolean(workspace.user?.emailVerified)}
+                clientDevice={telemetry.clientDevice}
+                devices={workspace.devices}
+                currentDeviceId={workspace.currentDeviceId}
+                snapshot={telemetry.snapshot}
+                thresholds={telemetry.thresholds}
+                securityScans={workspace.securityScans}
+                onSignIn={workspace.signInWithGoogle}
+                onRecordScan={workspace.recordSecurityScan}
+                onDeleteScan={workspace.deleteSecurityScan}
+                onRemoveDevice={workspace.removeDeviceSession}
+                onOpenSystemMonitor={() => selectTab('system')}
+              />
+            )}
+
+            {activeTab === 'activity' && (
+              <ActivityView
+                userSignedIn={Boolean(workspace.user)}
+                tasks={workspace.tasks}
+                syncState={workspace.syncState}
+                lastSyncedAt={workspace.lastSyncedAt}
+                onSignIn={workspace.signInWithGoogle}
+              />
+            )}
+          </div>
         </main>
       </div>
 
@@ -385,7 +444,9 @@ function CadenceWorkspace() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <CadenceWorkspace />
+      <LanguageProvider>
+        <CadenceWorkspace />
+      </LanguageProvider>
     </ErrorBoundary>
   );
 }

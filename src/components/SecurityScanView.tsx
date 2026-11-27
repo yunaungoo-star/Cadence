@@ -11,6 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { formatRelativeTime, formatTimeClock } from '@/src/lib/formatters';
+import { useLanguage, type TranslationSet } from '@/src/lib/i18n';
 import {
   clearCachedTaskDrafts,
   countCachedTaskDrafts,
@@ -54,39 +55,42 @@ interface SecurityScanViewProps {
 type FindingsFilter = 'all' | 'issues' | 'passed';
 type ScopeFilter = 'all' | SecurityCheckScope;
 
-function getStatusDisplay(status: SecurityCheckStatus) {
+function getStatusDisplay(status: SecurityCheckStatus, t: TranslationSet) {
   if (status === 'critical') {
     return {
-      label: 'Critical',
+      label: t.security.criticalStatus,
       textClass: 'text-red-600 dark:text-red-400',
       Icon: ShieldAlert,
     };
   }
   if (status === 'warning') {
     return {
-      label: 'Attention',
+      label: t.security.attentionStatus,
       textClass: 'text-amber-600 dark:text-amber-400',
       Icon: AlertTriangle,
     };
   }
   return {
-    label: 'Nominal',
+    label: t.security.nominalStatus,
     textClass: 'text-emerald-600 dark:text-emerald-400',
     Icon: CheckCircle2,
   };
 }
 
-function getPermissionStateDisplay(state: 'granted' | 'prompt' | 'denied' | 'unsupported') {
+function getPermissionStateDisplay(
+  state: 'granted' | 'prompt' | 'denied' | 'unsupported',
+  t: TranslationSet
+) {
   if (state === 'granted') {
-    return { label: 'Granted', textClass: 'text-amber-600 dark:text-amber-400' };
+    return { label: t.security.granted, textClass: 'text-amber-600 dark:text-amber-400' };
   }
   if (state === 'denied') {
-    return { label: 'Blocked', textClass: 'text-emerald-600 dark:text-emerald-400' };
+    return { label: t.security.blocked, textClass: 'text-emerald-600 dark:text-emerald-400' };
   }
   if (state === 'prompt') {
-    return { label: 'Ask before use', textClass: 'text-slate-700 dark:text-slate-300' };
+    return { label: t.security.askBeforeUse, textClass: 'text-slate-700 dark:text-slate-300' };
   }
-  return { label: 'Not exposed', textClass: 'text-slate-400 dark:text-slate-500' };
+  return { label: t.security.notExposed, textClass: 'text-slate-400 dark:text-slate-500' };
 }
 
 export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
@@ -104,6 +108,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
   onRemoveDevice,
   onOpenSystemMonitor,
 }) => {
+  const { t } = useLanguage();
   const [audit, setAudit] = useState<ExecutedSecurityAudit | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanStage, setScanStage] = useState<string>('');
@@ -224,12 +229,12 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
 
   const postureText =
     audit?.overallStatus === 'at_risk'
-      ? 'Action Required'
+      ? t.security.actionRequired
       : audit?.overallStatus === 'attention'
-        ? 'Attention Needed'
+        ? t.security.attentionNeeded
         : audit
-          ? 'Protected'
-          : 'Scanning...';
+          ? t.security.protected
+          : t.security.scanning;
 
   const postureTone =
     audit?.overallStatus === 'at_risk'
@@ -246,7 +251,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 font-display tracking-tight">
-            Device Security &amp; Smart Protection
+            {t.security.title}
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <span>{clientDevice.deviceName}</span>
@@ -270,7 +275,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
           className="inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[40px] text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg transition-colors whitespace-nowrap shrink-0"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${scanning ? 'animate-spin' : ''}`} />
-          {scanning ? 'Scanning Device...' : 'Run Security Scan'}
+          {scanning ? t.security.scanning : t.security.runScan}
         </button>
       </div>
 
@@ -295,24 +300,24 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
-            <span>Protection Status</span>
+            <span>{t.security.protectionStatus}</span>
             <ShieldCheck className="w-4 h-4 text-slate-400" />
           </div>
           <div className={`text-2xl font-semibold font-display ${postureTone}`}>{postureText}</div>
           <div className="mt-2 text-xs font-mono tabular-nums text-slate-500 dark:text-slate-400">
             {audit
-              ? `${audit.passedChecks} / ${audit.totalChecks} checks nominal`
-              : 'Evaluating security posture'}
+              ? `${audit.passedChecks} / ${audit.totalChecks} ${t.security.nominalStatus}`
+              : t.security.scanning}
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
-            <span>Smart Protections</span>
+            <span>{t.security.smartProtections}</span>
             <Lock className="w-4 h-4 text-slate-400" />
           </div>
           <div className="text-2xl font-semibold font-mono tabular-nums text-slate-900 dark:text-slate-100">
-            {activeSafeguardsCount} / 4 Active
+            {activeSafeguardsCount} / 4
           </div>
           <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             {userSignedIn ? 'Account isolation & telemetry guard' : 'Local transport guard active'}
@@ -321,11 +326,11 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
-            <span>Session Hygiene</span>
+            <span>{t.security.sessionHygiene}</span>
             <KeyRound className="w-4 h-4 text-slate-400" />
           </div>
           <div className="text-2xl font-semibold font-mono tabular-nums text-slate-900 dark:text-slate-100">
-            {userSignedIn ? `${devices.length} ${devices.length === 1 ? 'Session' : 'Sessions'}` : 'Signed Out'}
+            {userSignedIn ? `${devices.length} ${devices.length === 1 ? 'Session' : 'Sessions'}` : t.activity.signedOut}
           </div>
           <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
             {userSignedIn
@@ -338,7 +343,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
-            <span>Latest Audit</span>
+            <span>{t.security.latestAudit}</span>
             <Activity className="w-4 h-4 text-slate-400" />
           </div>
           <div className="text-2xl font-semibold font-mono tabular-nums text-slate-900 dark:text-slate-100">
@@ -346,7 +351,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
           </div>
           <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 truncate">
             {latestSyncedScan
-              ? `Synced ${formatRelativeTime(latestSyncedScan.createdAt)} · ${latestSyncedScan.deviceName}`
+              ? `${formatRelativeTime(latestSyncedScan.createdAt)} · ${latestSyncedScan.deviceName}`
               : 'Local posture snapshot'}
           </div>
         </div>
@@ -358,10 +363,10 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
           <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
             <div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-                Smart Protection Safeguards
+                {t.security.smartSafeguardsTitle}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Active runtime protections and one-click hygiene actions for this device and account.
+                {t.security.smartSafeguardsDesc}
               </p>
             </div>
           </div>
@@ -394,7 +399,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
                   onClick={() => void onSignIn()}
                   className="px-3.5 py-2 min-h-[36px] text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors whitespace-nowrap shrink-0"
                 >
-                  Sign in with Google
+                  {t.nav.signInGoogle}
                 </button>
               )}
             </div>
@@ -413,7 +418,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
                         : 'text-emerald-600 dark:text-emerald-400'
                     }`}
                   >
-                    {telemetryAlert ? 'Threshold Alert' : 'Nominal'}
+                    {telemetryAlert ? t.security.attentionStatus : t.security.nominalStatus}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
@@ -427,7 +432,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
                 onClick={onOpenSystemMonitor}
                 className="px-3.5 py-2 min-h-[36px] text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap shrink-0"
               >
-                Open Telemetry
+                {t.security.openTelemetry}
               </button>
             </div>
 
@@ -487,7 +492,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
                   onClick={handleClearDrafts}
                   className="px-3.5 py-2 min-h-[36px] text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap shrink-0"
                 >
-                  Clear Cached Drafts
+                  {t.security.clearCachedDrafts}
                 </button>
               )}
             </div>
@@ -498,10 +503,10 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-              Browser Permission Posture
+              {t.security.browserPermissionsTitle}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Live hardware and sensor permissions granted to this origin.
+              {t.security.browserPermissionsDesc}
             </p>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
@@ -511,7 +516,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
               </div>
             ) : (
               audit!.permissions.map((perm) => {
-                const display = getPermissionStateDisplay(perm.state);
+                const display = getPermissionStateDisplay(perm.state, t);
                 return (
                   <div key={perm.name} className="px-5 py-3 flex items-center justify-between gap-4">
                     <span className="text-slate-700 dark:text-slate-300">{perm.label}</span>
@@ -531,10 +536,10 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
         <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-              Security Diagnostic Checks
+              {t.security.diagnosticChecksTitle}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Verified client browser and Node.js host checks from the latest audit run.
+              {t.security.diagnosticChecksDesc}
             </p>
           </div>
 
@@ -547,9 +552,9 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
             >
               {(
                 [
-                  { id: 'all', label: 'All Scopes' },
-                  { id: 'device', label: 'Device' },
-                  { id: 'host', label: 'Host Server' },
+                  { id: 'all', label: t.security.allScopes },
+                  { id: 'device', label: t.security.deviceScope },
+                  { id: 'host', label: t.security.hostScope },
                 ] as const
               ).map((item) => (
                 <button
@@ -575,9 +580,9 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
             >
               {(
                 [
-                  { id: 'all', label: 'All' },
-                  { id: 'issues', label: 'Attention' },
-                  { id: 'passed', label: 'Nominal' },
+                  { id: 'all', label: t.security.allStatus },
+                  { id: 'issues', label: t.security.attentionStatus },
+                  { id: 'passed', label: t.security.nominalStatus },
                 ] as const
               ).map((item) => (
                 <button
@@ -599,7 +604,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
 
         {!audit ? (
           <div className="px-5 py-8 text-center text-xs text-slate-500 dark:text-slate-400">
-            Running device and server security checks...
+            {t.security.scanning}
           </div>
         ) : filteredChecks.length === 0 ? (
           <div className="px-5 py-8 text-center text-xs text-slate-500 dark:text-slate-400">
@@ -608,7 +613,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {filteredChecks.map((check) => {
-              const st = getStatusDisplay(check.status);
+              const st = getStatusDisplay(check.status, t);
               const StatusIcon = st.Icon;
               return (
                 <div
@@ -621,7 +626,7 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
                         {check.title}
                       </span>
                       <span className="text-xs text-slate-400 dark:text-slate-500">
-                        {check.scope === 'device' ? 'Device' : 'Host Server'} · {check.category}
+                        {check.scope === 'device' ? t.security.deviceScope : t.security.hostScope} · {check.category}
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{check.detail}</p>
@@ -642,15 +647,15 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
         <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-              Cross-Device Scan Audit History
+              {t.security.auditHistoryTitle}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Immutable security scan logs synced across all devices signed into your account.
+              {t.security.auditHistoryDesc}
             </p>
           </div>
           {userSignedIn && (
             <span className="text-xs font-mono tabular-nums text-slate-500 dark:text-slate-400 shrink-0">
-              {securityScans.length} recorded
+              {securityScans.length}
             </span>
           )}
         </div>
@@ -658,22 +663,22 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
         {!userSignedIn ? (
           <div className="px-6 py-10 text-center">
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              Sign in to sync security scan history across your devices
+              {t.security.signInHistoryTitle}
             </p>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Signed-in accounts persist every scan audit cleanly in real time.
+              {t.security.signInHistoryDesc}
             </p>
             <button
               type="button"
               onClick={() => void onSignIn()}
               className="mt-4 px-4 py-2 min-h-[40px] text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors whitespace-nowrap"
             >
-              Sign in with Google
+              {t.nav.signInGoogle}
             </button>
           </div>
         ) : securityScans.length === 0 ? (
           <div className="px-6 py-8 text-center text-xs text-slate-500 dark:text-slate-400">
-            No saved scans yet. Click &ldquo;Run Security Scan&rdquo; above to record an audit report to your account.
+            {t.security.noSavedScans}
           </div>
         ) : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -686,10 +691,10 @@ export const SecurityScanView: React.FC<SecurityScanViewProps> = ({
                     : 'text-emerald-600 dark:text-emerald-400';
               const statusLabel =
                 scan.overallStatus === 'at_risk'
-                  ? 'Action Required'
+                  ? t.security.actionRequired
                   : scan.overallStatus === 'attention'
-                    ? 'Attention'
-                    : 'Protected';
+                    ? t.security.attentionStatus
+                    : t.security.protected;
 
               return (
                 <li key={scan.id} className="px-5 py-3.5 flex items-center justify-between gap-4">

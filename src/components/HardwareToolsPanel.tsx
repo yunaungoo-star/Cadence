@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { TelemetryThresholds } from '@/src/hooks/useSystemTelemetry';
 import { formatBytes, formatUptime } from '@/src/lib/formatters';
+import { useLanguage } from '@/src/lib/i18n';
 import type { ClientDeviceInfo, SystemSnapshot, TaskDraft } from '@/src/types/app';
 
 interface HardwareToolsPanelProps {
@@ -75,6 +76,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
   onOpenSystemMonitor,
   onClose,
 }) => {
+  const { t } = useLanguage();
   const [storageStats, setStorageStats] = useState<LocalStorageStats>(() => ({
     quotaUsageBytes: null,
     quotaTotalBytes: null,
@@ -297,7 +299,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
   return (
     <section
       aria-label="System hardware tools"
-      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden"
+      className="cadence-panel-enter bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden"
     >
       {/* Panel Header */}
       <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -305,12 +307,12 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
           <Cpu className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" aria-hidden="true" />
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-              System Hardware Tools
+              {t.hardware.title}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
               {snapshot
                 ? `${snapshot.hostname} · ${snapshot.platform}/${snapshot.arch} · uptime ${formatUptime(snapshot.uptimeSeconds)}`
-                : 'Connecting to live hardware telemetry...'}
+                : t.hardware.connecting}
             </p>
           </div>
         </div>
@@ -322,7 +324,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg transition-colors whitespace-nowrap"
           >
             {copiedSnapshot ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copiedSnapshot ? 'Copied Snapshot' : 'Copy Snapshot'}</span>
+            <span>{copiedSnapshot ? t.hardware.copiedSnapshot : t.hardware.copySnapshot}</span>
           </button>
 
           <button
@@ -331,7 +333,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg transition-colors whitespace-nowrap"
           >
             {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-            <span>{isPaused ? 'Resume Feed' : 'Pause Feed'}</span>
+            <span>{isPaused ? t.hardware.resumeFeed : t.hardware.pauseFeed}</span>
           </button>
 
           {onOpenSystemMonitor && (
@@ -341,7 +343,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 border border-slate-200 dark:border-slate-800 rounded-lg transition-colors whitespace-nowrap"
             >
               <Activity className="w-3.5 h-3.5" />
-              <span>Full Monitor</span>
+              <span>{t.hardware.fullMonitor}</span>
             </button>
           )}
 
@@ -363,7 +365,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1.5">
               <Cpu className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Host CPU</span>
+              <span>{t.hardware.hostCpu}</span>
             </span>
             <span className="font-mono tabular-nums">
               {snapshot ? `${snapshot.cpu.coreCount} cores` : streamStatus}
@@ -394,7 +396,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1.5">
               <MemoryStick className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Host Memory</span>
+              <span>{t.hardware.hostMemory}</span>
             </span>
             <span className="font-mono tabular-nums">
               {snapshot ? formatBytes(snapshot.memory.totalBytes) : '--'}
@@ -425,7 +427,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1.5">
               <HardDrive className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Disk &amp; Draft Cache</span>
+              <span>{t.hardware.diskCache}</span>
             </span>
             <button
               type="button"
@@ -459,7 +461,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1.5">
               <Laptop className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>This Workstation</span>
+              <span>{t.hardware.thisWorkstation}</span>
             </span>
             <span className="font-mono tabular-nums">{clientDevice.cpuCores} threads</span>
           </div>
@@ -472,7 +474,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
           <div className="text-[11px] font-mono tabular-nums text-slate-500 dark:text-slate-400 truncate">
             {clientDevice.jsHeapUsedBytes !== null
               ? `JS Heap ${formatBytes(clientDevice.jsHeapUsedBytes)}`
-              : `${clientDevice.browser} · ${clientDevice.online ? 'Online' : 'Offline'}`}
+              : `${clientDevice.browser} · ${clientDevice.online ? t.devices.online : t.devices.offline}`}
           </div>
         </div>
       </div>
@@ -484,10 +486,10 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100 font-display">
-                Log Hardware Snapshot as Actionable Task
+                {t.hardware.logHeading}
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Creates a synced task pre-filled with real-time hardware readings for follow-up.
+                {t.hardware.logSubtitle}
               </p>
             </div>
             {actionNotice && (
@@ -505,7 +507,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[36px] text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 disabled:opacity-50 rounded-lg transition-colors whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>{busyTemplate === 'cpu' ? 'Logging...' : 'CPU Spike Task'}</span>
+              <span>{busyTemplate === 'cpu' ? t.hardware.logging : t.hardware.cpuTaskBtn}</span>
             </button>
 
             <button
@@ -515,7 +517,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[36px] text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 disabled:opacity-50 rounded-lg transition-colors whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>{busyTemplate === 'memory' ? 'Logging...' : 'Memory Audit Task'}</span>
+              <span>{busyTemplate === 'memory' ? t.hardware.logging : t.hardware.memTaskBtn}</span>
             </button>
 
             <button
@@ -525,7 +527,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[36px] text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 disabled:opacity-50 rounded-lg transition-colors whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>{busyTemplate === 'disk' ? 'Logging...' : 'Storage Audit Task'}</span>
+              <span>{busyTemplate === 'disk' ? t.hardware.logging : t.hardware.diskTaskBtn}</span>
             </button>
 
             <button
@@ -535,7 +537,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[36px] text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 disabled:opacity-50 rounded-lg transition-colors whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>{busyTemplate === 'workstation' ? 'Logging...' : 'Workstation Check'}</span>
+              <span>{busyTemplate === 'workstation' ? t.hardware.logging : t.hardware.workstationTaskBtn}</span>
             </button>
           </div>
         </div>
@@ -544,7 +546,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
         <div className="lg:col-span-5 p-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100 font-display">
-              Alert Guards &amp; Local Cache
+              {t.hardware.alertGuardsTitle}
             </h3>
             <span className="text-[11px] font-mono tabular-nums text-slate-500 dark:text-slate-400">
               {storageStats.quotaUsageBytes !== null && storageStats.quotaTotalBytes !== null
@@ -556,7 +558,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1">
               <span className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400">
-                <span>CPU Alert</span>
+                <span>{t.hardware.cpuAlert}</span>
                 <span className="font-mono tabular-nums text-slate-900 dark:text-slate-100">
                   {thresholds.cpuWarning}%
                 </span>
@@ -579,7 +581,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
 
             <label className="space-y-1">
               <span className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400">
-                <span>Memory Alert</span>
+                <span>{t.hardware.memAlert}</span>
                 <span className="font-mono tabular-nums text-slate-900 dark:text-slate-100">
                   {thresholds.memWarning}%
                 </span>
@@ -612,7 +614,7 @@ export const HardwareToolsPanel: React.FC<HardwareToolsPanelProps> = ({
               className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 border border-slate-200 dark:border-slate-700 disabled:opacity-40 rounded-md transition-colors whitespace-nowrap"
             >
               <Trash2 className="w-3 h-3" />
-              <span>Clear Draft Cache</span>
+              <span>{t.hardware.clearDraftCache}</span>
             </button>
           </div>
         </div>

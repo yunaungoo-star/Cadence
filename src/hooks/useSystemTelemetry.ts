@@ -180,6 +180,23 @@ export function useSystemTelemetry() {
     setThresholdEvents([]);
   }, []);
 
+  const refreshNow = useCallback(async () => {
+    setClientDevice(getClientDeviceInfo());
+    try {
+      const res = await fetch('/api/system/stats');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as {
+        snapshot: SystemSnapshot;
+        history: SystemHistoryPoint[];
+      };
+      setSnapshot(data.snapshot);
+      setHistory(data.history.slice(-MAX_HISTORY));
+      setStreamStatus(pausedRef.current ? 'paused' : 'live');
+    } catch {
+      setStreamStatus('error');
+    }
+  }, []);
+
   return {
     snapshot,
     history,
@@ -192,5 +209,6 @@ export function useSystemTelemetry() {
     clearThresholdEvents,
     clientDevice,
     refreshClientDevice: () => setClientDevice(getClientDeviceInfo()),
+    refreshNow,
   };
 }

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { LiveMetricChart } from '@/src/components/LiveMetricChart';
 import { formatBytes, formatTimeClock, formatUptime } from '@/src/lib/formatters';
+import { useLanguage, type TranslationSet } from '@/src/lib/i18n';
 import type {
   ClientDeviceInfo,
   SystemHistoryPoint,
@@ -51,14 +52,15 @@ const TIME_WINDOWS: Array<{ value: TimeWindowSeconds; label: string }> = [
 function getMetricStatus(
   value: number,
   warnThreshold: number,
-  critThreshold: number
+  critThreshold: number,
+  t: TranslationSet
 ): {
   label: string;
   tone: 'nominal' | 'elevated' | 'critical';
 } {
-  if (value >= critThreshold) return { label: 'Critical', tone: 'critical' };
-  if (value >= warnThreshold) return { label: 'Elevated', tone: 'elevated' };
-  return { label: 'Nominal', tone: 'nominal' };
+  if (value >= critThreshold) return { label: t.system.critical, tone: 'critical' };
+  if (value >= warnThreshold) return { label: t.system.elevated, tone: 'elevated' };
+  return { label: t.system.nominal, tone: 'nominal' };
 }
 
 export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
@@ -73,6 +75,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
   onClearThresholdEvents,
   clientDevice,
 }) => {
+  const { t } = useLanguage();
   const [windowSeconds, setWindowSeconds] = useState<TimeWindowSeconds>(60);
   const [runtimeMode, setRuntimeMode] = useState<RuntimeChartMode>('eventLoop');
   const [coreSort, setCoreSort] = useState<CoreSortMode>('index');
@@ -85,10 +88,10 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
   const heapUsedMB = snapshot ? Number((snapshot.memory.process.heapUsedBytes / (1024 * 1024)).toFixed(1)) : 0;
   const load1m = snapshot?.cpu.loadAvg[0] ?? 0;
 
-  const cpuStatus = getMetricStatus(cpuPct, thresholds.cpuWarning, 92);
-  const memStatus = getMetricStatus(memPct, thresholds.memWarning, 94);
-  const eventLoopStatus = getMetricStatus(elMeanMs, 25, 80);
-  const loadStatus = getMetricStatus(load1m, Math.max(1, (snapshot?.cpu.coreCount ?? 2) * 0.85), Math.max(2, (snapshot?.cpu.coreCount ?? 2) * 1.5));
+  const cpuStatus = getMetricStatus(cpuPct, thresholds.cpuWarning, 92, t);
+  const memStatus = getMetricStatus(memPct, thresholds.memWarning, 94, t);
+  const eventLoopStatus = getMetricStatus(elMeanMs, 25, 80, t);
+  const loadStatus = getMetricStatus(load1m, Math.max(1, (snapshot?.cpu.coreCount ?? 2) * 0.85), Math.max(2, (snapshot?.cpu.coreCount ?? 2) * 1.5), t);
 
   const windowedHistory = useMemo(() => {
     if (history.length === 0) return [];
@@ -190,12 +193,12 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
 
   const streamText =
     streamStatus === 'live'
-      ? 'Live 1s telemetry stream'
+      ? t.system.liveStream
       : streamStatus === 'paused'
-        ? 'Stream paused'
+        ? t.system.streamPaused
         : streamStatus === 'error'
-          ? 'Reconnecting stream'
-          : 'Connecting to telemetry stream';
+          ? t.system.reconnectingStream
+          : t.system.connectingStream;
 
   const runtimeChartConfig =
     runtimeMode === 'eventLoop'
@@ -218,8 +221,8 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
             valueDecimals: 1,
             accentColor: '#0891b2',
             statusLabel: snapshot
-              ? `${((snapshot.memory.process.heapUsedBytes / Math.max(1, snapshot.memory.process.heapLimitBytes)) * 100).toFixed(1)}% of limit`
-              : 'Nominal',
+              ? `${((snapshot.memory.process.heapUsedBytes / Math.max(1, snapshot.memory.process.heapLimitBytes)) * 100).toFixed(1)}%`
+              : t.system.nominal,
             statusTone: 'nominal' as const,
           }
         : {
@@ -239,7 +242,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 font-display tracking-tight">
-            System Information &amp; Telemetry
+            {t.system.title}
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
@@ -300,7 +303,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[38px] text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 rounded-lg transition-colors whitespace-nowrap shrink-0"
           >
             <Download className="w-3.5 h-3.5" />
-            Export JSON
+            {t.system.exportJson}
           </button>
 
           <button
@@ -309,7 +312,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[38px] text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap shrink-0"
           >
             {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-            {isPaused ? 'Resume Stream' : 'Pause Stream'}
+            {isPaused ? t.system.resumeStream : t.system.pauseStream}
           </button>
         </div>
       </div>
@@ -336,7 +339,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
-            <span>CPU Utilization</span>
+            <span>{t.system.cpuUtilization}</span>
             <Cpu className="w-4 h-4 text-slate-400" />
           </div>
           <div className="text-2xl font-semibold font-mono tabular-nums text-slate-900 dark:text-slate-100">
@@ -364,7 +367,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
-            <span>System Memory</span>
+            <span>{t.system.systemMemory}</span>
             <HardDrive className="w-4 h-4 text-slate-400" />
           </div>
           <div className="text-2xl font-semibold font-mono tabular-nums text-slate-900 dark:text-slate-100">
@@ -392,7 +395,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
-            <span>Event Loop Lag</span>
+            <span>{t.system.eventLoopLag}</span>
             <Activity className="w-4 h-4 text-slate-400" />
           </div>
           <div className="text-2xl font-semibold font-mono tabular-nums text-slate-900 dark:text-slate-100">
@@ -418,7 +421,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
-            <span>Load Avg &amp; Uptime</span>
+            <span>{t.system.loadAvgUptime}</span>
             <Server className="w-4 h-4 text-slate-400" />
           </div>
           <div className="text-xl font-semibold font-mono tabular-nums text-slate-900 dark:text-slate-100 truncate">
@@ -438,10 +441,10 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-              Host Physical Memory Distribution
+              {t.system.memoryDistributionTitle}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Proportional breakdown of active workloads, reclaimable page cache, and unallocated RAM
+              {t.system.memoryDistributionDesc}
             </p>
           </div>
           <div className="text-xs font-mono tabular-nums text-slate-600 dark:text-slate-300">
@@ -488,7 +491,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
       {/* Primary Live Time-Series Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LiveMetricChart
-          title="CPU Utilization"
+          title={t.system.cpuUtilization}
           subtitle={`Aggregate processor load across all logical cores (${windowLabel} window)`}
           currentValue={cpuPct}
           points={cpuSeries}
@@ -499,7 +502,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
         />
 
         <LiveMetricChart
-          title="Memory Allocation"
+          title={t.system.memoryAllocationTitle}
           subtitle={`Active physical memory consumption vs total host capacity (${windowLabel} window)`}
           currentValue={memPct}
           points={memSeries}
@@ -564,18 +567,18 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
             <div className="flex items-center gap-2 mb-1">
               <SlidersHorizontal className="w-4 h-4 text-slate-500 dark:text-slate-400" />
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-                Alert Thresholds &amp; Events
+                {t.system.alertThresholdsTitle}
               </h2>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Configure live warning thresholds and monitor real-time crossings.
+              {t.system.alertThresholdsDesc}
             </p>
 
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <label htmlFor="cpu-threshold-range" className="font-medium text-slate-700 dark:text-slate-300">
-                    CPU Warning Limit
+                    {t.system.cpuWarningLimit}
                   </label>
                   <span className="font-mono tabular-nums font-semibold text-slate-900 dark:text-slate-100">
                     {thresholds.cpuWarning}%
@@ -598,7 +601,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
               <div>
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <label htmlFor="mem-threshold-range" className="font-medium text-slate-700 dark:text-slate-300">
-                    Memory Warning Limit
+                    {t.system.memWarningLimit}
                   </label>
                   <span className="font-mono tabular-nums font-semibold text-slate-900 dark:text-slate-100">
                     {thresholds.memWarning}%
@@ -623,7 +626,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
           <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                Recent Threshold Crossings
+                {t.system.recentCrossings}
               </span>
               {thresholdEvents.length > 0 && (
                 <button
@@ -632,7 +635,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
                   className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                 >
                   <Trash2 className="w-3 h-3" />
-                  Clear
+                  {t.system.clearBtn}
                 </button>
               )}
             </div>
@@ -640,7 +643,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
             {thresholdEvents.length === 0 ? (
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 py-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span>No threshold crossings observed in this session.</span>
+                <span>{t.system.noCrossings}</span>
               </div>
             ) : (
               <ul className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
@@ -680,7 +683,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-                Per-Core Processor Breakdown
+                {t.system.perCoreTitle}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {snapshot
@@ -707,7 +710,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-colors whitespace-nowrap"
               >
                 <ArrowDownUp className="w-3 h-3" />
-                {coreSort === 'index' ? 'Sort by Peak' : 'Sort by Core'}
+                {coreSort === 'index' ? t.system.sortByPeak : t.system.sortByCore}
               </button>
             </div>
           </div>
@@ -768,7 +771,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
             <div className="flex items-center gap-2 mb-3">
               <Network className="w-4 h-4 text-slate-500 dark:text-slate-400" />
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-                Storage &amp; Network Interfaces
+                {t.system.storageNetworkTitle}
               </h2>
             </div>
 
@@ -839,7 +842,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-              V8 Heap &amp; Process Resource Telemetry
+              {t.system.v8HeapTitle}
             </h2>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
@@ -899,7 +902,7 @@ export const SystemTelemetryView: React.FC<SystemTelemetryViewProps> = ({
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-display">
-              Host Environment &amp; Local Browser Hardware
+              {t.system.hostEnvTitle}
             </h2>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">

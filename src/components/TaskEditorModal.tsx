@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BookOpen, RotateCcw, X } from 'lucide-react';
+import { useLanguage } from '@/src/lib/i18n';
 import { BLUEPRINT_LIMITS, validateTaskTitle } from '@/src/lib/validation';
 import type { TaskDraft, TaskItem, TaskPriority, TaskStatus } from '@/src/types/app';
 
@@ -82,6 +83,7 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const { t } = useLanguage();
   const [draft, setDraft] = useState<TaskDraft>(DEFAULT_DRAFT);
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
@@ -178,22 +180,38 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
     }
   };
 
+  const toLocalDate = (offsetDays: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const todayIso = toLocalDate(0);
+  const tomorrowIso = toLocalDate(1);
+  const nextWeekIso = toLocalDate(7);
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-[2px] p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="task-modal-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg overflow-hidden">
+      <div className="cadence-modal-enter w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-baseline gap-2.5 min-w-0">
             <h2 id="task-modal-title" className="text-base font-semibold text-slate-900 dark:text-slate-100 font-display">
-              {editingTask ? 'Edit Task' : 'New Task'}
+              {editingTask ? t.editor.editTaskTitle : t.editor.newTaskTitle}
             </h2>
             {hasSavedDraft && (
               <span className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                Draft auto-saved
+                {t.editor.draftAutoSaved}
               </span>
             )}
           </div>
@@ -209,7 +227,7 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>{showGuide ? 'Hide Guide' : 'Guide'}</span>
+              <span>{showGuide ? t.editor.hideGuideBtn : t.editor.guideBtn}</span>
             </button>
             <button
               type="button"
@@ -223,26 +241,22 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
         </div>
 
         {showGuide && (
-          <div className="px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 space-y-2 text-xs text-slate-600 dark:text-slate-300">
+          <div className="cadence-panel-enter px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 space-y-2 text-xs text-slate-600 dark:text-slate-300">
             <p className="font-medium text-slate-900 dark:text-slate-100">
-              End-User Guide · New Task vs Add Task
+              {t.editor.guideHeading}
             </p>
             <ul className="space-y-1 leading-relaxed">
               <li>
-                <span className="font-medium text-slate-800 dark:text-slate-200">New Task (this editor):</span> Set
-                starting Status (<span className="font-medium">To Do</span>,{' '}
-                <span className="font-medium">In Progress</span>, or <span className="font-medium">Done</span>), pick an
-                existing Workspace List, and write full notes up to 2,000 characters.
+                <span className="font-medium text-slate-800 dark:text-slate-200">{t.editor.guideNewTaskPrefix}</span>{' '}
+                {t.editor.guideNewTaskItem}
               </li>
               <li>
-                <span className="font-medium text-slate-800 dark:text-slate-200">Add Task (Tasks page bar):</span> Use
-                the inline bar above your task list for fast 1-line capture with{' '}
-                <span className="font-medium">Today</span> / <span className="font-medium">Tomorrow</span> quick dates.
+                <span className="font-medium text-slate-800 dark:text-slate-200">{t.editor.guideAddTaskPrefix}</span>{' '}
+                {t.editor.guideAddTaskItem}
               </li>
               <li>
-                <span className="font-medium text-slate-800 dark:text-slate-200">Automatic Draft Safety:</span>{' '}
-                Unsaved changes save locally in your browser. Closing or refreshing restores your work; click{' '}
-                <span className="font-medium">Discard draft</span> to reset.
+                <span className="font-medium text-slate-800 dark:text-slate-200">{t.editor.guideDraftPrefix}</span>{' '}
+                {t.editor.guideDraftItem}
               </li>
             </ul>
           </div>
@@ -252,7 +266,7 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label htmlFor="task-title-input" className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                Title
+                {t.editor.titleLabel}
               </label>
               <span className="text-[11px] font-mono tabular-nums text-slate-400">
                 {draft.title.length}/{BLUEPRINT_LIMITS.TASK_TITLE_MAX_LEN}
@@ -265,7 +279,7 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
               maxLength={BLUEPRINT_LIMITS.TASK_TITLE_MAX_LEN}
               value={draft.title}
               onChange={(e) => setDraft((prev) => ({ ...prev, title: e.target.value }))}
-              placeholder="e.g., Audit production memory spikes before release"
+              placeholder={t.editor.titlePlaceholder}
               className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
           </div>
@@ -273,7 +287,7 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label htmlFor="task-desc-input" className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                Notes
+                {t.editor.notesLabel}
               </label>
               <span className="text-[11px] font-mono tabular-nums text-slate-400">
                 {draft.description.length}/{BLUEPRINT_LIMITS.TASK_DESC_MAX_LEN}
@@ -285,7 +299,7 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
               maxLength={BLUEPRINT_LIMITS.TASK_DESC_MAX_LEN}
               value={draft.description}
               onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))}
-              placeholder="Optional implementation notes or checklist details"
+              placeholder={t.editor.notesPlaceholder}
               className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 resize-y"
             />
           </div>
@@ -293,7 +307,7 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="task-status-select" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Status
+                {t.editor.statusLabel}
               </label>
               <select
                 id="task-status-select"
@@ -301,15 +315,15 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
                 onChange={(e) => setDraft((prev) => ({ ...prev, status: e.target.value as TaskStatus }))}
                 className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
               >
-                <option value="todo">To Do</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Done</option>
+                <option value="todo">{t.status.todo}</option>
+                <option value="in_progress">{t.status.in_progress}</option>
+                <option value="done">{t.status.done}</option>
               </select>
             </div>
 
             <div>
               <label htmlFor="task-priority-select" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Priority
+                {t.editor.priorityLabel}
               </label>
               <select
                 id="task-priority-select"
@@ -317,16 +331,16 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
                 onChange={(e) => setDraft((prev) => ({ ...prev, priority: e.target.value as TaskPriority }))}
                 className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
+                <option value="low">{t.priority.low}</option>
+                <option value="medium">{t.priority.medium}</option>
+                <option value="high">{t.priority.high}</option>
+                <option value="urgent">{t.priority.urgent}</option>
               </select>
             </div>
 
             <div>
               <label htmlFor="task-category-input" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Workspace List
+                {t.editor.workspaceListLabel}
               </label>
               <input
                 id="task-category-input"
@@ -346,7 +360,7 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
 
             <div>
               <label htmlFor="task-due-input" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Due Date
+                {t.editor.dueDateLabel}
               </label>
               <input
                 id="task-due-input"
@@ -355,6 +369,50 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
                 onChange={(e) => setDraft((prev) => ({ ...prev, dueDate: e.target.value }))}
                 className="w-full px-3 py-2 text-sm font-mono bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setDraft((prev) => ({ ...prev, dueDate: todayIso }))}
+                  className={`px-2 py-0.5 rounded border transition-colors ${
+                    draft.dueDate === todayIso
+                      ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {t.tasks.today}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDraft((prev) => ({ ...prev, dueDate: tomorrowIso }))}
+                  className={`px-2 py-0.5 rounded border transition-colors ${
+                    draft.dueDate === tomorrowIso
+                      ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {t.tasks.tomorrow}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDraft((prev) => ({ ...prev, dueDate: nextWeekIso }))}
+                  className={`px-2 py-0.5 rounded border transition-colors font-mono ${
+                    draft.dueDate === nextWeekIso
+                      ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {t.editor.nextWeekBtn}
+                </button>
+                {draft.dueDate && (
+                  <button
+                    type="button"
+                    onClick={() => setDraft((prev) => ({ ...prev, dueDate: '' }))}
+                    className="px-1.5 py-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  >
+                    {t.tasks.clearDate}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -365,11 +423,11 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
           )}
 
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Drafts auto-save locally in your browser. Press{' '}
+            {t.editor.draftEscHintBefore}{' '}
             <kbd className="px-1 py-0.5 font-mono text-[10px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded">
               Esc
             </kbd>{' '}
-            to close safely without losing edits.
+            {t.editor.draftEscHintAfter}
           </p>
 
           <div className="pt-1 flex items-center justify-between gap-3">
@@ -381,7 +439,7 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
                   className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  Discard draft
+                  {t.editor.discardDraft}
                 </button>
               )}
             </div>
@@ -392,14 +450,14 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
                 onClick={onClose}
                 className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap"
               >
-                Cancel
+                {t.editor.cancel}
               </button>
               <button
                 type="submit"
                 disabled={saving}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors whitespace-nowrap"
               >
-                {saving ? 'Saving...' : editingTask ? 'Save Changes' : 'Create Task'}
+                {saving ? t.editor.saving : editingTask ? t.editor.saveChanges : t.editor.createTask}
               </button>
             </div>
           </div>

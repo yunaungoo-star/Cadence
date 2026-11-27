@@ -45,6 +45,56 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  :focus-visible {
+    outline: 2px solid rgb(37 99 235);
+    outline-offset: 2px;
+  }
+}
+
+@keyframes cadenceViewEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cadencePanelEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cadenceModalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cadence-view-enter {
+  animation: cadenceViewEnter 190ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cadence-panel-enter {
+  animation: cadencePanelEnter 170ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cadence-modal-enter {
+  animation: cadenceModalEnter 190ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

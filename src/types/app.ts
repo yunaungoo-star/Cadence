@@ -185,4 +185,4 @@ export interface SecurityScanReport {
 }
 
 export type SyncConnectionState = 'synced' | 'syncing' | 'offline' | 'signed_out';
-export type ActiveTab = 'tasks' | 'system' | 'devices' | 'security' | 'activity';
+export type ActiveTab = 'tasks' | 'dashboard' | 'system' | 'devices' | 'security' | 'activity';

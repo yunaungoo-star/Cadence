@@ -3,6 +3,7 @@ import {
   AlertOctagon,
   Archive,
   ArrowDown,
+  ArrowRight,
   ArrowUp,
   ArrowUpDown,
   BookOpen,
@@ -14,6 +15,8 @@ import {
   Columns3,
   Cpu,
   Edit3,
+  GripVertical,
+  Languages,
   LayoutList,
   Minus,
   Plus,
@@ -27,6 +30,7 @@ import { HardwareToolsPanel } from '@/src/components/HardwareToolsPanel';
 import { TasksGuidePanel, type TasksGuideTab } from '@/src/components/TasksGuidePanel';
 import type { TelemetryThresholds } from '@/src/hooks/useSystemTelemetry';
 import { formatRelativeTime } from '@/src/lib/formatters';
+import { useLanguage, type TranslationSet } from '@/src/lib/i18n';
 import { BLUEPRINT_LIMITS, validateTaskTitle } from '@/src/lib/validation';
 import type {
   ClientDeviceInfo,
@@ -83,32 +87,28 @@ const PRIORITY_CHIP: Record<
   TaskPriority,
   {
     text: string;
-    chipClassName: string;
+    textClassName: string;
     Icon: React.ComponentType<{ className?: string }>;
   }
 > = {
   urgent: {
     text: 'Urgent',
-    chipClassName:
-      'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/80',
+    textClassName: 'text-red-600 dark:text-red-400',
     Icon: AlertOctagon,
   },
   high: {
     text: 'High',
-    chipClassName:
-      'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/80',
+    textClassName: 'text-amber-600 dark:text-amber-400',
     Icon: ArrowUp,
   },
   medium: {
     text: 'Medium',
-    chipClassName:
-      'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/80',
+    textClassName: 'text-blue-600 dark:text-blue-400',
     Icon: Minus,
   },
   low: {
     text: 'Low',
-    chipClassName:
-      'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+    textClassName: 'text-slate-500 dark:text-slate-400',
     Icon: ArrowDown,
   },
 };
@@ -131,12 +131,19 @@ function toLocalIsoDate(offsetDays = 0): string {
 function getDueDateMeta(
   dueDate: string,
   status: TaskStatus,
-  todayIso: string
+  todayIso: string,
+  t?: TranslationSet
 ): { label: string; toneClass: string; isOverdue: boolean; isDueSoon: boolean } | null {
+  const duePrefix = t?.tasks.duePrefix ?? 'Due';
+  const overduePrefix = t?.tasks.overduePrefix ?? 'Overdue';
+  const dueTodayLabel = t?.tasks.dueTodayLabel ?? 'Due today';
+  const dueTomorrowLabel = t?.tasks.dueTomorrowLabel ?? 'Due tomorrow';
+  const dueInPrefix = t?.tasks.dueInPrefix ?? 'Due in';
+
   if (!dueDate) return null;
   if (status === 'done') {
     return {
-      label: `Due ${dueDate}`,
+      label: `${duePrefix} ${dueDate}`,
       toneClass: 'text-slate-400 dark:text-slate-500',
       isOverdue: false,
       isDueSoon: false,
@@ -147,7 +154,7 @@ function getDueDateMeta(
   const dueMs = Date.parse(`${dueDate}T00:00:00`);
   if (!Number.isFinite(todayMs) || !Number.isFinite(dueMs)) {
     return {
-      label: `Due ${dueDate}`,
+      label: `${duePrefix} ${dueDate}`,
       toneClass: 'text-slate-500 dark:text-slate-400',
       isOverdue: false,
       isDueSoon: false,
@@ -158,7 +165,7 @@ function getDueDateMeta(
   if (diffDays < 0) {
     const overdueDays = Math.abs(diffDays);
     return {
-      label: `Overdue ${overdueDays}d (${dueDate})`,
+      label: `${overduePrefix} ${overdueDays}d (${dueDate})`,
       toneClass: 'text-red-600 dark:text-red-400 font-medium',
       isOverdue: true,
       isDueSoon: true,
@@ -166,7 +173,7 @@ function getDueDateMeta(
   }
   if (diffDays === 0) {
     return {
-      label: `Due today (${dueDate})`,
+      label: `${dueTodayLabel} (${dueDate})`,
       toneClass: 'text-amber-600 dark:text-amber-400 font-medium',
       isOverdue: false,
       isDueSoon: true,
@@ -174,7 +181,7 @@ function getDueDateMeta(
   }
   if (diffDays === 1) {
     return {
-      label: `Due tomorrow (${dueDate})`,
+      label: `${dueTomorrowLabel} (${dueDate})`,
       toneClass: 'text-blue-600 dark:text-blue-400 font-medium',
       isOverdue: false,
       isDueSoon: true,
@@ -182,14 +189,14 @@ function getDueDateMeta(
   }
   if (diffDays <= 3) {
     return {
-      label: `Due in ${diffDays}d (${dueDate})`,
+      label: `${dueInPrefix} ${diffDays}d (${dueDate})`,
       toneClass: 'text-slate-700 dark:text-slate-300',
       isOverdue: false,
       isDueSoon: true,
     };
   }
   return {
-    label: `Due ${dueDate}`,
+    label: `${duePrefix} ${dueDate}`,
     toneClass: 'text-slate-500 dark:text-slate-400',
     isOverdue: false,
     isDueSoon: false,
@@ -224,6 +231,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
   onUpdateTelemetryThresholds,
   onOpenSystemMonitor,
 }) => {
+  const { language, setLanguage, t } = useLanguage();
   const [quickTitle, setQuickTitle] = useState('');
   const [quickNotes, setQuickNotes] = useState('');
   const [showQuickNotes, setShowQuickNotes] = useState(false);
@@ -250,6 +258,8 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
   const [showGuide, setShowGuide] = useState(false);
   const [guideTab, setGuideTab] = useState<TasksGuideTab>('creating');
   const [showHardwareTools, setShowHardwareTools] = useState(false);
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const quickTitleInputRef = useRef<HTMLInputElement | null>(null);
@@ -501,13 +511,43 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
     return (
       <div className="space-y-6">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 max-w-3xl">
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 font-display tracking-tight text-balance">
-            Real-time cross-device task synchronization
-          </h1>
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 font-display tracking-tight text-balance">
+              {t.tasks.signedOutTitle}
+            </h1>
+            <div
+              role="group"
+              aria-label="Page language"
+              className="inline-flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shrink-0"
+            >
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                aria-pressed={language === 'en'}
+                className={`px-2 py-1 text-[11px] font-medium rounded-md transition-colors whitespace-nowrap ${
+                  language === 'en'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('my')}
+                aria-pressed={language === 'my'}
+                className={`px-2 py-1 text-[11px] font-medium rounded-md transition-colors whitespace-nowrap ${
+                  language === 'my'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                {t.nav.myanmar}
+              </button>
+            </div>
+          </div>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl">
-            Sign in with your Google account to create, organize, and complete tasks that sync immediately across every
-            desktop, tablet, and phone linked to your account—backed by owner-isolated Firestore security rules and live
-            hardware telemetry.
+            {t.tasks.signedOutDesc}
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-4">
             <button
@@ -515,11 +555,9 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               onClick={() => void onSignIn()}
               className="px-5 py-2.5 min-h-[44px] text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors whitespace-nowrap shrink-0"
             >
-              Sign in with Google
+              {t.nav.signInGoogle}
             </button>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              Verified Google Identity · Real-time Firestore persistence · Draft recovery
-            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t.tasks.signedOutTrust}</span>
           </div>
         </div>
       </div>
@@ -528,10 +566,10 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
 
   const syncSummary =
     syncState === 'synced'
-      ? `Verified sync${lastSyncedAt ? ` · ${formatRelativeTime(lastSyncedAt)}` : ''}`
+      ? `${t.tasks.verifiedSync}${lastSyncedAt ? ` · ${formatRelativeTime(lastSyncedAt)}` : ''}`
       : syncState === 'syncing'
-        ? 'Syncing changes...'
-        : 'Offline · Queuing local edits';
+        ? t.tasks.syncingChanges
+        : t.tasks.offlineQueue;
 
   const hasActiveFilters =
     Boolean(searchQuery.trim()) ||
@@ -546,16 +584,22 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 font-display tracking-tight">
-            Synchronized Tasks
+            {t.tasks.pageTitle}
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
-            <span>{counts.total} active</span>
+            <span>
+              {counts.total} {t.tasks.activeCount}
+            </span>
             <span aria-hidden="true">·</span>
-            <span>{counts.done} completed</span>
+            <span>
+              {counts.done} {t.tasks.completedCount}
+            </span>
             {counts.archived > 0 && (
               <>
                 <span aria-hidden="true">·</span>
-                <span>{counts.archived} archived</span>
+                <span>
+                  {counts.archived} {t.tasks.archivedCount}
+                </span>
               </>
             )}
           </div>
@@ -580,10 +624,10 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>
                   {latestScanStatus === 'at_risk'
-                    ? 'Security alert'
+                    ? t.tasks.securityAlert
                     : latestScanStatus === 'attention'
-                      ? 'Security review'
-                      : 'Owner-isolated'}
+                      ? t.tasks.securityReview
+                      : t.tasks.ownerIsolated}
                 </span>
               </button>
             </>
@@ -611,7 +655,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                       : ''
                   }`}
                 />
-                <span>Hardware Tools</span>
+                <span>{t.tasks.hardwareTools}</span>
                 {snapshot && (
                   <span className="hidden sm:inline font-mono tabular-nums text-[11px] text-slate-500 dark:text-slate-400">
                     · {snapshot.cpu.usagePercent.toFixed(0)}% CPU / {snapshot.memory.usedPercent.toFixed(0)}% RAM
@@ -633,8 +677,40 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>{showGuide ? 'Hide Guide' : 'User Guide'}</span>
+            <span>{showGuide ? t.tasks.hideGuide : t.tasks.userGuide}</span>
           </button>
+
+          <div
+            role="group"
+            aria-label={t.nav.languageLabel}
+            className="inline-flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shrink-0"
+          >
+            <Languages className="w-3.5 h-3.5 ml-1.5 mr-0.5 text-slate-400 dark:text-slate-500" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => setLanguage('en')}
+              aria-pressed={language === 'en'}
+              className={`px-2 py-1 text-[11px] font-medium rounded-md transition-colors whitespace-nowrap ${
+                language === 'en'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('my')}
+              aria-pressed={language === 'my'}
+              className={`px-2 py-1 text-[11px] font-medium rounded-md transition-colors whitespace-nowrap ${
+                language === 'my'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              {t.nav.myanmar}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -667,12 +743,46 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
 
       {/* 4-Column Trusted Workspace Overview Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1.5">
-            <span>Completion Progress</span>
-            <span className="font-mono tabular-nums font-medium text-slate-900 dark:text-slate-100">
-              {counts.completionPct}%
-            </span>
+        <button
+          type="button"
+          onClick={() => {
+            setViewMode('list');
+            setStatusFilter((prev) => (prev === 'done' ? 'all' : 'done'));
+          }}
+          className={`text-left bg-white dark:bg-slate-900 border rounded-xl p-4 transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.99] ${
+            statusFilter === 'done' && viewMode === 'list'
+              ? 'border-emerald-600 dark:border-emerald-500'
+              : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 mb-1.5">
+            <span>{t.tasks.completionProgress}</span>
+            <div className="inline-flex items-center gap-1.5 shrink-0">
+              <svg className="w-4 h-4 -rotate-90" viewBox="0 0 20 20" aria-hidden="true">
+                <circle
+                  cx="10"
+                  cy="10"
+                  r="7"
+                  fill="none"
+                  strokeWidth="2.5"
+                  className="stroke-slate-200 dark:stroke-slate-800"
+                />
+                <circle
+                  cx="10"
+                  cy="10"
+                  r="7"
+                  fill="none"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeDasharray={43.98}
+                  strokeDashoffset={43.98 - (43.98 * counts.completionPct) / 100}
+                  className="stroke-emerald-600 dark:stroke-emerald-400 transition-all duration-300"
+                />
+              </svg>
+              <span className="font-mono tabular-nums font-medium text-slate-900 dark:text-slate-100">
+                {counts.completionPct}%
+              </span>
+            </div>
           </div>
           <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden mb-2">
             <div
@@ -680,32 +790,60 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               style={{ width: `${counts.completionPct}%` }}
             />
           </div>
-          <div className="text-xs font-mono tabular-nums text-slate-500 dark:text-slate-400">
-            {counts.done} of {counts.total} active done
+          <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-mono tabular-nums">
+              {counts.done} / {counts.total} {t.tasks.activeDoneSuffix}
+            </span>
+            <span className="truncate">
+              {statusFilter === 'done' && viewMode === 'list'
+                ? t.tasks.filteringCompleted
+                : t.tasks.clickToFilterCompleted}
+            </span>
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Active Workload</div>
+        <button
+          type="button"
+          onClick={() => {
+            setViewMode('list');
+            setStatusFilter((prev) => (prev === 'in_progress' ? 'all' : 'in_progress'));
+          }}
+          className={`text-left bg-white dark:bg-slate-900 border rounded-xl p-4 transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.99] ${
+            statusFilter === 'in_progress' && viewMode === 'list'
+              ? 'border-blue-600 dark:border-blue-500'
+              : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+          }`}
+        >
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+            <span>{t.tasks.activeWorkload}</span>
+            <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+          </div>
           <div className="text-xl font-semibold font-mono tabular-nums text-slate-900 dark:text-slate-100">
-            {counts.inProgress} in progress
+            {counts.inProgress} {t.tasks.inProgressLabel}
           </div>
-          <div className="mt-1 text-xs font-mono tabular-nums text-slate-500 dark:text-slate-400">
-            {counts.todo} queued · {counts.highPriority} urgent/high
+          <div className="mt-1 flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-mono tabular-nums truncate">
+              {counts.todo} {t.tasks.queuedLabel} · {counts.highPriority} {t.tasks.urgentHighLabel}
+            </span>
+            <span className="shrink-0">
+              {statusFilter === 'in_progress' && viewMode === 'list'
+                ? t.tasks.filteringInProgress
+                : t.tasks.clickToFilterInProgress}
+            </span>
           </div>
-        </div>
+        </button>
 
         <button
           type="button"
           onClick={() => setSmartFocus((prev) => (prev === 'due_soon' ? 'all' : 'due_soon'))}
-          className={`text-left bg-white dark:bg-slate-900 border rounded-xl p-4 transition-colors ${
+          className={`text-left bg-white dark:bg-slate-900 border rounded-xl p-4 transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.99] ${
             smartFocus === 'due_soon'
               ? 'border-blue-600 dark:border-blue-500'
               : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
           }`}
         >
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
-            <span>Schedule Focus</span>
+            <span>{t.tasks.scheduleFocus}</span>
             <CalendarClock className="w-3.5 h-3.5 text-slate-400" />
           </div>
           <div
@@ -718,30 +856,37 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
             }`}
           >
             {counts.overdue > 0
-              ? `${counts.overdue} overdue`
+              ? `${counts.overdue} ${t.tasks.overdueSuffix}`
               : counts.dueSoon > 0
-                ? `${counts.dueSoon} due soon`
-                : 'On schedule'}
+                ? `${counts.dueSoon} ${t.tasks.dueSoonSuffix}`
+                : t.tasks.onSchedule}
           </div>
           <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            {smartFocus === 'due_soon' ? 'Filtering due soon · Click to clear' : 'Click to focus upcoming due dates'}
+            {smartFocus === 'due_soon' ? t.tasks.filteringDueSoon : t.tasks.clickToFocusDue}
           </div>
         </button>
 
         <button
           type="button"
           onClick={onOpenDevices}
-          className="text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl p-4 transition-colors"
+          className="group text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl p-4 transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.99]"
         >
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
-            <span>Device Sync Trust</span>
+            <span>{t.tasks.deviceSyncTrust}</span>
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="text-xl font-semibold font-mono tabular-nums text-slate-900 dark:text-slate-100">
-            {onlineDeviceCount} {onlineDeviceCount === 1 ? 'device' : 'devices'} live
+            {onlineDeviceCount}{' '}
+            {onlineDeviceCount === 1 ? t.tasks.deviceSingular : t.tasks.devicePlural} {t.tasks.liveSuffix}
           </div>
-          <div className="mt-1 text-xs font-mono tabular-nums text-slate-500 dark:text-slate-400">
-            {totalDeviceCount} registered · Encrypted cloud sync
+          <div className="mt-1 flex items-center justify-between gap-2 text-xs font-mono tabular-nums text-slate-500 dark:text-slate-400">
+            <span>
+              {totalDeviceCount} {t.tasks.registeredSyncNote}
+            </span>
+            <ArrowRight
+              className="w-3.5 h-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150"
+              aria-hidden="true"
+            />
           </div>
         </button>
       </div>
@@ -754,8 +899,8 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search tasks by title, notes, or list..."
-          aria-label="Search tasks by title or description"
+          placeholder={t.tasks.searchPlaceholder}
+          aria-label={t.tasks.searchPlaceholder}
           className="w-full pl-10 pr-14 py-2.5 min-h-[44px] text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
         />
         {searchQuery ? (
@@ -792,37 +937,37 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               setQuickTitle(e.target.value);
               if (quickError) setQuickError(null);
             }}
-            placeholder="Add a task synced across your devices..."
-            aria-label="New task title"
+            placeholder={t.tasks.quickAddPlaceholder}
+            aria-label={t.tasks.quickAddPlaceholder}
             className="flex-1 min-w-0 px-3.5 py-2 min-h-[40px] text-sm bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <select
-              aria-label="Priority"
+              aria-label={t.editor.priorityLabel}
               value={quickPriority}
               onChange={(e) => setQuickPriority(e.target.value as TaskPriority)}
               className="px-3 py-2 min-h-[40px] text-xs font-medium bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
             >
-              <option value="low">Low priority</option>
-              <option value="medium">Medium priority</option>
-              <option value="high">High priority</option>
-              <option value="urgent">Urgent</option>
+              <option value="low">{t.tasks.lowPriorityOption}</option>
+              <option value="medium">{t.tasks.mediumPriorityOption}</option>
+              <option value="high">{t.tasks.highPriorityOption}</option>
+              <option value="urgent">{t.tasks.urgentOption}</option>
             </select>
 
             <input
               type="text"
-              aria-label="Workspace list"
+              aria-label={t.editor.workspaceListLabel}
               maxLength={BLUEPRINT_LIMITS.TASK_CATEGORY_MAX_LEN}
               value={quickCategory}
               onChange={(e) => setQuickCategory(e.target.value)}
-              placeholder="List"
+              placeholder={t.tasks.listPlaceholder}
               className="w-28 px-3 py-2 min-h-[40px] text-xs bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
 
             <input
               type="date"
-              aria-label="Due date"
+              aria-label={t.editor.dueDateLabel}
               value={quickDueDate}
               onChange={(e) => setQuickDueDate(e.target.value)}
               className="px-3 py-2 min-h-[40px] text-xs font-mono bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -837,7 +982,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                   : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
-              {showQuickNotes ? 'Hide Notes' : 'Add Notes'}
+              {showQuickNotes ? t.tasks.hideNotes : t.tasks.addNotes}
             </button>
 
             <button
@@ -846,14 +991,14 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[40px] text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors whitespace-nowrap shrink-0"
             >
               <Plus className="w-4 h-4" />
-              {submittingQuick ? 'Adding...' : 'Add Task'}
+              {submittingQuick ? t.tasks.addingTask : t.tasks.addTask}
             </button>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex flex-wrap items-center gap-2 text-slate-500 dark:text-slate-400">
-            <span>Quick due date:</span>
+            <span>{t.tasks.quickDueDate}</span>
             <button
               type="button"
               onClick={() => setQuickDueDate(todayIso)}
@@ -863,7 +1008,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                   : 'border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              Today
+              {t.tasks.today}
             </button>
             <button
               type="button"
@@ -874,7 +1019,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                   : 'border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              Tomorrow
+              {t.tasks.tomorrow}
             </button>
             {quickDueDate && (
               <button
@@ -882,20 +1027,20 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                 onClick={() => setQuickDueDate('')}
                 className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               >
-                Clear date
+                {t.tasks.clearDate}
               </button>
             )}
           </div>
 
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-            <span>Creates in To Do</span>
+            <span>{t.tasks.createsInTodo}</span>
             <span aria-hidden="true">·</span>
             <button
               type="button"
               onClick={() => openGuideAt('creating')}
               className="text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
             >
-              Add Task vs New Task guide
+              {t.tasks.addVsNewGuideLink}
             </button>
           </div>
         </div>
@@ -906,9 +1051,9 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
             maxLength={BLUEPRINT_LIMITS.TASK_DESC_MAX_LEN}
             value={quickNotes}
             onChange={(e) => setQuickNotes(e.target.value)}
-            placeholder="Optional description, acceptance criteria, or links..."
-            aria-label="Task notes"
-            className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 resize-y"
+            placeholder={t.tasks.notesPlaceholder}
+            aria-label={t.editor.notesLabel}
+            className="cadence-panel-enter w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 resize-y"
           />
         )}
 
@@ -923,10 +1068,10 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
       {undoArchiveTask && (
         <div
           role="status"
-          className="flex items-center justify-between gap-4 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200"
+          className="cadence-panel-enter flex items-center justify-between gap-4 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-200"
         >
           <span className="truncate">
-            Archived <strong className="font-medium">&ldquo;{undoArchiveTask.title}&rdquo;</strong>
+            {t.tasks.archivedLabel} <strong className="font-medium">&ldquo;{undoArchiveTask.title}&rdquo;</strong>
           </span>
           <div className="flex items-center gap-3 shrink-0">
             <button
@@ -935,7 +1080,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               className="inline-flex items-center gap-1 font-medium text-blue-600 dark:text-blue-400 hover:underline"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Undo
+              {t.tasks.undo}
             </button>
             <button
               type="button"
@@ -961,10 +1106,10 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
             >
               {(
                 [
-                  { key: 'all', label: 'All' },
-                  { key: 'todo', label: 'To Do' },
-                  { key: 'in_progress', label: 'In Progress' },
-                  { key: 'done', label: 'Done' },
+                  { key: 'all', label: t.tasks.allTab },
+                  { key: 'todo', label: t.status.todo },
+                  { key: 'in_progress', label: t.status.in_progress },
+                  { key: 'done', label: t.status.done },
                 ] as const
               ).map((tab) => (
                 <button
@@ -993,9 +1138,9 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
           >
             {(
               [
-                { id: 'all', label: 'Everything' },
-                { id: 'due_soon', label: `Due Soon (${counts.dueSoon})` },
-                { id: 'high_priority', label: `Urgent & High (${counts.highPriority})` },
+                { id: 'all', label: t.tasks.everythingPreset },
+                { id: 'due_soon', label: `${t.tasks.dueSoonPreset} (${counts.dueSoon})` },
+                { id: 'high_priority', label: `${t.tasks.urgentHighPreset} (${counts.highPriority})` },
               ] as const
             ).map((preset) => (
               <button
@@ -1022,11 +1167,11 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
             onChange={(e) => setPriorityFilter(e.target.value as 'all' | TaskPriority)}
             className="px-3 py-1.5 min-h-[36px] text-xs bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
-            <option value="all">All priorities</option>
-            <option value="urgent">Urgent</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
+            <option value="all">{t.tasks.allPriorities}</option>
+            <option value="urgent">{t.priority.urgent}</option>
+            <option value="high">{t.priority.high}</option>
+            <option value="medium">{t.priority.medium}</option>
+            <option value="low">{t.priority.low}</option>
           </select>
 
           <select
@@ -1035,7 +1180,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-3 py-1.5 min-h-[36px] text-xs bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
-            <option value="all">All lists</option>
+            <option value="all">{t.tasks.allLists}</option>
             {categories.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
@@ -1051,11 +1196,11 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               onChange={(e) => setSortBy(e.target.value as SortOption)}
               className="pl-8 pr-3 py-1.5 min-h-[36px] text-xs bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
             >
-              <option value="updated">Sort: Recently synced</option>
-              <option value="due">Sort: Due date</option>
-              <option value="priority">Sort: Priority</option>
-              <option value="created_desc">Sort: Creation date (newest)</option>
-              <option value="created_asc">Sort: Creation date (oldest)</option>
+              <option value="updated">{t.tasks.sortUpdated}</option>
+              <option value="due">{t.tasks.sortDue}</option>
+              <option value="priority">{t.tasks.sortPriority}</option>
+              <option value="created_desc">{t.tasks.sortCreatedDesc}</option>
+              <option value="created_asc">{t.tasks.sortCreatedAsc}</option>
             </select>
           </div>
 
@@ -1073,7 +1218,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               }`}
             >
               <CheckSquare className="w-3.5 h-3.5" />
-              {selectMode ? 'Cancel Select' : 'Select'}
+              {selectMode ? t.tasks.cancelSelectBtn : t.tasks.selectBtn}
             </button>
           )}
 
@@ -1086,7 +1231,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              aria-label="List view"
+              aria-label={t.tasks.listView}
               className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                 viewMode === 'list'
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
@@ -1094,7 +1239,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               }`}
             >
               <LayoutList className="w-3.5 h-3.5" />
-              List
+              {t.tasks.listView}
             </button>
             <button
               type="button"
@@ -1103,7 +1248,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                 setSelectMode(false);
                 setSelectedIds([]);
               }}
-              aria-label="Board view"
+              aria-label={t.tasks.boardView}
               className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                 viewMode === 'board'
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs'
@@ -1111,25 +1256,43 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               }`}
             >
               <Columns3 className="w-3.5 h-3.5" />
-              Board
+              {t.tasks.boardView}
             </button>
           </div>
         </div>
       </div>
 
+      {/* Active Filter Summary */}
+      {hasActiveFilters && (
+        <div className="cadence-panel-enter flex items-center justify-between gap-3 px-1 text-xs text-slate-500 dark:text-slate-400">
+          <span className="font-mono tabular-nums">
+            {t.tasks.showingFilteredPrefix} {filteredTasks.length} {t.tasks.showingFilteredOf} {counts.total}
+          </span>
+          <button
+            type="button"
+            onClick={resetAllFilters}
+            className="font-medium text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+          >
+            {t.tasks.resetFilters}
+          </button>
+        </div>
+      )}
+
       {/* Bulk Action Bar when selecting tasks */}
       {selectMode && viewMode === 'list' && filteredTasks.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs">
+        <div className="cadence-panel-enter flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={handleToggleAllVisible}
               className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
             >
-              {validSelectedIds.length === filteredTasks.length ? 'Deselect all' : `Select all (${filteredTasks.length})`}
+              {validSelectedIds.length === filteredTasks.length
+                ? t.tasks.deselectAll
+                : `${t.tasks.selectAll} (${filteredTasks.length})`}
             </button>
             <span className="font-mono tabular-nums text-slate-500 dark:text-slate-400">
-              {validSelectedIds.length} selected
+              {validSelectedIds.length} {t.tasks.selectedSuffix}
             </span>
           </div>
 
@@ -1140,7 +1303,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               onClick={() => void handleBulkStatus('in_progress')}
               className="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 rounded-md transition-colors"
             >
-              Mark In Progress
+              {t.tasks.markInProgress}
             </button>
             <button
               type="button"
@@ -1148,7 +1311,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               onClick={() => void handleBulkStatus('done')}
               className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 rounded-md transition-colors"
             >
-              Mark Done
+              {t.tasks.markDone}
             </button>
             <button
               type="button"
@@ -1156,7 +1319,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
               onClick={() => void handleBulkArchive()}
               className="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 rounded-md transition-colors"
             >
-              Archive Selected
+              {t.tasks.archiveSelected}
             </button>
           </div>
         </div>
@@ -1178,12 +1341,10 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
       ) : filteredTasks.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-6 py-14 text-center">
           <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-            {counts.total === 0 ? 'No active tasks in your workspace' : 'No tasks match your active filters'}
+            {counts.total === 0 ? t.tasks.emptyActiveTitle : t.tasks.emptyFilteredTitle}
           </p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            {counts.total === 0
-              ? 'Create a task above or open the detailed editor to begin syncing across devices.'
-              : 'Try clearing the search query or resetting active filters.'}
+            {counts.total === 0 ? t.tasks.emptyActiveDesc : t.tasks.emptyFilteredDesc}
           </p>
           <div className="mt-5 flex items-center justify-center gap-3">
             {counts.total === 0 || !hasActiveFilters ? (
@@ -1193,7 +1354,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                 className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[40px] text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
-                Create First Task
+                {t.tasks.createFirstTask}
               </button>
             ) : (
               <button
@@ -1201,26 +1362,55 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                 onClick={resetAllFilters}
                 className="px-4 py-2 min-h-[40px] text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors whitespace-nowrap"
               >
-                Reset Filters
+                {t.tasks.resetFilters}
               </button>
             )}
           </div>
         </div>
       ) : viewMode === 'board' ? (
-        /* 3-Column Board View */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+        /* 3-Column Board View with Drag & Drop */
+        <div className="cadence-view-enter grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
           {(
             [
-              { status: 'todo', title: 'To Do', nextStatus: 'in_progress', nextLabel: 'Start' },
-              { status: 'in_progress', title: 'In Progress', nextStatus: 'done', nextLabel: 'Complete' },
-              { status: 'done', title: 'Done', nextStatus: 'todo', nextLabel: 'Reopen' },
+              { status: 'todo', title: t.status.todo, nextStatus: 'in_progress', nextLabel: t.tasks.boardStart },
+              { status: 'in_progress', title: t.status.in_progress, nextStatus: 'done', nextLabel: t.tasks.boardComplete },
+              { status: 'done', title: t.status.done, nextStatus: 'todo', nextLabel: t.tasks.boardReopen },
             ] as const
           ).map((col) => {
-            const colTasks = filteredTasks.filter((t) => t.status === col.status);
+            const colTasks = filteredTasks.filter((tItem) => tItem.status === col.status);
+            const isDropTarget = dragOverStatus === col.status && draggedTaskId !== null;
             return (
               <section
                 key={col.status}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden"
+                onDragOver={(e) => {
+                  if (!draggedTaskId) return;
+                  e.preventDefault();
+                  if (dragOverStatus !== col.status) {
+                    setDragOverStatus(col.status);
+                  }
+                }}
+                onDragLeave={(e) => {
+                  if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+                  if (dragOverStatus === col.status) {
+                    setDragOverStatus(null);
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const droppedId = e.dataTransfer.getData('text/plain') || draggedTaskId;
+                  setDragOverStatus(null);
+                  setDraggedTaskId(null);
+                  if (!droppedId) return;
+                  const existing = tasks.find((item) => item.id === droppedId);
+                  if (existing && existing.status !== col.status) {
+                    void onUpdateStatus(droppedId, col.status);
+                  }
+                }}
+                className={`bg-white dark:bg-slate-900 border rounded-xl overflow-hidden transition-colors duration-150 ${
+                  isDropTarget
+                    ? 'border-blue-500 dark:border-blue-400 bg-blue-50/30 dark:bg-blue-950/20'
+                    : 'border-slate-200 dark:border-slate-800'
+                }`}
               >
                 <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                   <h2 className="text-xs font-semibold text-slate-900 dark:text-slate-100 font-display">
@@ -1231,35 +1421,64 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                   </span>
                 </div>
 
+                {isDropTarget && (
+                  <div className="mx-3 mt-3 px-3 py-2 border border-dashed border-blue-400 dark:border-blue-500 rounded-lg text-[11px] font-medium text-blue-600 dark:text-blue-400 text-center">
+                    {t.tasks.dropHere} {col.title}
+                  </div>
+                )}
+
                 {colTasks.length === 0 ? (
                   <div className="px-4 py-8 text-center text-xs text-slate-400 dark:text-slate-500">
-                    No tasks in {col.title}
+                    {t.tasks.noTasksInCol} {col.title}
                   </div>
                 ) : (
                   <ul className="divide-y divide-slate-100 dark:divide-slate-800">
                     {colTasks.map((task) => {
                       const pInfo = PRIORITY_CHIP[task.priority] ?? PRIORITY_CHIP.medium;
                       const PriorityIcon = pInfo.Icon;
-                      const dueMeta = getDueDateMeta(task.dueDate, task.status, todayIso);
+                      const priorityLabel = t.priority[task.priority] ?? pInfo.text;
+                      const dueMeta = getDueDateMeta(task.dueDate, task.status, todayIso, t);
                       const isDone = task.status === 'done';
+                      const isDragging = draggedTaskId === task.id;
 
                       return (
-                        <li key={task.id} className="p-4 space-y-2.5 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
+                        <li
+                          key={task.id}
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggedTaskId(task.id);
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', task.id);
+                          }}
+                          onDragEnd={() => {
+                            setDraggedTaskId(null);
+                            setDragOverStatus(null);
+                          }}
+                          className={`group p-4 space-y-2.5 cursor-grab active:cursor-grabbing hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-all duration-150 ${
+                            isDragging ? 'opacity-45' : ''
+                          }`}
+                        >
                           <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-1.5 min-w-0">
+                              <GripVertical
+                                className="w-3.5 h-3.5 mt-0.5 text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 shrink-0 transition-colors"
+                                aria-hidden="true"
+                              />
+                              <span
+                                className={`text-sm font-medium break-words ${
+                                  isDone
+                                    ? 'line-through text-slate-400 dark:text-slate-500'
+                                    : 'text-slate-900 dark:text-slate-100'
+                                }`}
+                              >
+                                {task.title}
+                              </span>
+                            </div>
                             <span
-                              className={`text-sm font-medium break-words ${
-                                isDone
-                                  ? 'line-through text-slate-400 dark:text-slate-500'
-                                  : 'text-slate-900 dark:text-slate-100'
-                              }`}
-                            >
-                              {task.title}
-                            </span>
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-md border whitespace-nowrap shrink-0 ${pInfo.chipClassName}`}
+                              className={`inline-flex items-center gap-1 text-[11px] font-medium whitespace-nowrap shrink-0 ${pInfo.textClassName}`}
                             >
                               <PriorityIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
-                              <span>{pInfo.text}</span>
+                              <span>{priorityLabel}</span>
                             </span>
                           </div>
 
@@ -1287,7 +1506,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                             >
                               {col.nextLabel}
                             </button>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 sm:opacity-75 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
                               <button
                                 type="button"
                                 onClick={() => onOpenEditor(task)}
@@ -1317,21 +1536,23 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
         </div>
       ) : (
         /* List View */
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+        <div className="cadence-view-enter bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {filteredTasks.map((task) => {
               const isDone = task.status === 'done';
               const isInProgress = task.status === 'in_progress';
               const pInfo = PRIORITY_CHIP[task.priority] ?? PRIORITY_CHIP.medium;
               const PriorityIcon = pInfo.Icon;
-              const dueMeta = getDueDateMeta(task.dueDate, task.status, todayIso);
+              const priorityLabel = t.priority[task.priority] ?? pInfo.text;
+              const statusLabel = t.status[task.status] ?? STATUS_LABEL[task.status];
+              const dueMeta = getDueDateMeta(task.dueDate, task.status, todayIso, t);
               const isSelected = validSelectedIds.includes(task.id);
               const isExpanded = Boolean(expandedIds[task.id]);
 
               return (
                 <li
                   key={task.id}
-                  className={`px-5 py-3.5 flex items-start justify-between gap-4 transition-colors ${
+                  className={`group px-5 py-3.5 flex items-start justify-between gap-4 transition-colors ${
                     isSelected
                       ? 'bg-blue-50/50 dark:bg-blue-950/20'
                       : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'
@@ -1352,7 +1573,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                       type="button"
                       onClick={() => void onUpdateStatus(task.id, isDone ? 'todo' : 'done')}
                       aria-label={isDone ? `Mark "${task.title}" as To Do` : `Mark "${task.title}" as Done`}
-                      className={`mt-0.5 w-5 h-5 rounded flex items-center justify-center border transition-colors shrink-0 ${
+                      className={`mt-0.5 w-5 h-5 rounded flex items-center justify-center border transition-all active:scale-90 shrink-0 ${
                         isDone
                           ? 'bg-emerald-600 border-emerald-600 text-white'
                           : isInProgress
@@ -1381,13 +1602,13 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                           {task.title}
                         </span>
                         <span
-                          aria-label={`Priority: ${pInfo.text}`}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-md border whitespace-nowrap shrink-0 ${pInfo.chipClassName} ${
+                          aria-label={`Priority: ${priorityLabel}`}
+                          className={`inline-flex items-center gap-1 text-[11px] font-medium whitespace-nowrap shrink-0 ${pInfo.textClassName} ${
                             isDone ? 'opacity-60' : ''
                           }`}
                         >
                           <PriorityIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
-                          <span>{pInfo.text}</span>
+                          <span>{priorityLabel}</span>
                         </span>
                       </div>
 
@@ -1408,7 +1629,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                               }
                               className="mt-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline"
                             >
-                              {isExpanded ? 'Show less' : 'Show full notes'}
+                              {isExpanded ? t.tasks.showLess : t.tasks.showFullNotes}
                             </button>
                           )}
                         </div>
@@ -1416,7 +1637,7 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
 
                       {/* Unboxed Metadata Line */}
                       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400">
-                        <span>{STATUS_LABEL[task.status]}</span>
+                        <span>{statusLabel}</span>
                         <span aria-hidden="true">·</span>
                         <span>{task.category}</span>
                         {dueMeta && (
@@ -1434,16 +1655,16 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                   </div>
 
                   {/* Row Actions */}
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0 sm:opacity-75 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
                     <select
                       aria-label={`Change status for ${task.title}`}
                       value={task.status}
                       onChange={(e) => void onUpdateStatus(task.id, e.target.value as TaskStatus)}
                       className="hidden sm:block px-2 py-1 text-xs bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
                     >
-                      <option value="todo">To Do</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="done">Done</option>
+                      <option value="todo">{t.status.todo}</option>
+                      <option value="in_progress">{t.status.in_progress}</option>
+                      <option value="done">{t.status.done}</option>
                     </select>
 
                     <button
@@ -1476,14 +1697,14 @@ export const TasksWorkspace: React.FC<TasksWorkspaceProps> = ({
                           }}
                           className="px-2.5 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md whitespace-nowrap"
                         >
-                          Delete
+                          {t.tasks.deleteBtn}
                         </button>
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(null)}
                           className="px-2 py-1 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 whitespace-nowrap"
                         >
-                          Cancel
+                          {t.tasks.cancelBtn}
                         </button>
                       </div>
                     ) : (
